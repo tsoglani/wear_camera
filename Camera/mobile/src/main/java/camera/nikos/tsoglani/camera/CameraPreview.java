@@ -15,6 +15,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.Toast;
 import android.hardware.Camera.Size;
+
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.wearable.Asset;
@@ -69,6 +70,23 @@ public class CameraPreview extends SurfaceView implements
             }
         }
         return true;
+    }
+
+    public void setZoom(int zoom) {
+        Camera.Parameters params = mCamera.getParameters();
+
+        if (params.isZoomSupported()) {
+            mCamera.cancelAutoFocus();
+
+            int maxZoom = params.getMaxZoom();
+
+            if (zoom > maxZoom)
+                zoom = maxZoom;
+            if (zoom < 0)
+                zoom = 0;
+            params.setZoom(zoom);
+            mCamera.setParameters(params);
+        }
     }
 
     float mDist;
@@ -181,14 +199,16 @@ public class CameraPreview extends SurfaceView implements
         mCamera = camera;
         try {
             mCamera.setPreviewDisplay(mSurfaceHolder);
+            startVideo();
+
             mCamera.startPreview();
         } catch (Exception e) {
             Log.d(VIEW_LOG_TAG, "Error starting camera preview: " + e.getMessage());
         }
     }
 
-    Thread thread = null;
-
+    Thread[] threads = new Thread[3];
+    int rotation=0;
     private void startVideo() {
 //        SurfaceHolder videoCaptureViewHolder = null;
 //        try {
@@ -288,6 +308,7 @@ public class CameraPreview extends SurfaceView implements
 
 //         Camera.Parameters parameters = mCamera.getParameters();
 
+
         mCamera.setErrorCallback(new Camera.ErrorCallback() {
             public void onError(int error, Camera camera) {
             }
@@ -322,56 +343,170 @@ public class CameraPreview extends SurfaceView implements
         mCamera.addCallbackBuffer(new byte[dataBufferSize]);
         mCamera.setPreviewCallbackWithBuffer(new Camera.PreviewCallback() {
             public void onPreviewFrame(final byte[] data, final Camera camera) {
-                if (thread != null && thread.isAlive()) {
+                if (threads[0] != null && threads[0].isAlive() && threads[1] != null && threads[1].isAlive() && threads[2] != null && threads[2].isAlive()) {
                     return;
                 }
-                thread = new Thread() {
-                    @Override
-                    public void run() {
-                        if (dataClient == null || !dataClient.isConnected()) {
-                            createDataGoogleApiConnection();
 
+                CameraActivity ca= (CameraActivity) getContext();
+                if (ca.rotationMode == ca.LANDSHAPE) {
+                    rotation=0;
+                } if (ca.rotationMode == ca.LANDSHAPE_REVERSE) {
+                    rotation=(-180);
+                } else  if (ca.rotationMode == ca.POIRTRAIT) {
+                    rotation=(-90);
+                }
+
+                if (threads[0] == null) {
+                    threads[0] = new Thread() {
+                        @Override
+                        public void run() {
+                            if (dataClient == null || !dataClient.isConnected()) {
+                                createDataGoogleApiConnection();
+
+                            }
+
+
+                            if (dataClient != null && dataClient.isConnected()) {
+                                try {
+                                    Camera.Parameters parameters = camera.getParameters();
+                                    int w = parameters.getPreviewSize().width;
+                                    int h = parameters.getPreviewSize().height;
+                                    int format = parameters.getPreviewFormat();
+                                    YuvImage image = new YuvImage(data, format, w, h, null);
+
+                                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                                    Rect area = new Rect(0, 0, w, h);
+                                    image.compressToJpeg(area, 50, out);
+
+                                    Bitmap bm = BitmapFactory.decodeByteArray(out.toByteArray(), 0, out.size());
+                                    Matrix matrix = new Matrix();
+
+
+                                    matrix.postRotate(rotation);
+
+                                    Bitmap rotatedBitmap = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), matrix, true);
+
+                                    Asset asset = createAssetFromBitmap(rotatedBitmap);
+                                    final PutDataMapRequest request = PutDataMapRequest.create("/image");
+                                    DataMap map = request.getDataMap();
+                                    map.putLong("time", new Date().getTime()); // MOST IMPORTANT LINE FOR TIMESTAMP
+                                    map.putAsset("profileImage", asset);
+                                    Wearable.DataApi.putDataItem(dataClient, request.asPutDataRequest());
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+
+
+                            try {
+                                camera.addCallbackBuffer(data);
+                            } catch (Exception e) {
+                                Log.e("CameraTest", "addCallbackBuffer error");
+
+                            }
+
+                            threads[0] = null;
                         }
+                    };
+                    threads[0].start();
+                } else if (threads[1] == null) {
+                    threads[1] = new Thread() {
+                        @Override
+                        public void run() {
+                            if (dataClient == null || !dataClient.isConnected()) {
+                                createDataGoogleApiConnection();
+
+                            }
 
 
-                        if (dataClient != null && dataClient.isConnected()) {
-                            Camera.Parameters parameters = camera.getParameters();
-                            int w = parameters.getPreviewSize().width;
-                            int h = parameters.getPreviewSize().height;
-                            int format = parameters.getPreviewFormat();
-                            YuvImage image = new YuvImage(data, format, w, h, null);
+                            if (dataClient != null && dataClient.isConnected()) {
+                                Camera.Parameters parameters = camera.getParameters();
+                                int w = parameters.getPreviewSize().width;
+                                int h = parameters.getPreviewSize().height;
+                                int format = parameters.getPreviewFormat();
+                                YuvImage image = new YuvImage(data, format, w, h, null);
 
-                            ByteArrayOutputStream out = new ByteArrayOutputStream();
-                            Rect area = new Rect(0, 0, w, h);
-                            image.compressToJpeg(area, 50, out);
+                                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                                Rect area = new Rect(0, 0, w, h);
+                                image.compressToJpeg(area, 50, out);
 
-                            Bitmap bm = BitmapFactory.decodeByteArray(out.toByteArray(), 0, out.size());
-                            Matrix matrix = new Matrix();
+                                Bitmap bm = BitmapFactory.decodeByteArray(out.toByteArray(), 0, out.size());
+                                Matrix matrix = new Matrix();
 
-                            matrix.postRotate(-90);
+                                matrix.postRotate(rotation);
 
-                            Bitmap rotatedBitmap = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), matrix, true);
+                                Bitmap rotatedBitmap = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), matrix, true);
 
-                            Asset asset = createAssetFromBitmap(rotatedBitmap);
-                            final PutDataMapRequest request = PutDataMapRequest.create("/image");
-                            DataMap map = request.getDataMap();
-                            map.putLong("time", new Date().getTime()); // MOST IMPORTANT LINE FOR TIMESTAMP
-                            map.putAsset("profileImage", asset);
-                            Wearable.DataApi.putDataItem(dataClient, request.asPutDataRequest());
+                                Asset asset = createAssetFromBitmap(rotatedBitmap);
+                                final PutDataMapRequest request = PutDataMapRequest.create("/image");
+                                DataMap map = request.getDataMap();
+                                map.putLong("time", new Date().getTime()); // MOST IMPORTANT LINE FOR TIMESTAMP
+                                map.putAsset("profileImage", asset);
+                                Wearable.DataApi.putDataItem(dataClient, request.asPutDataRequest());
+                            }
+
+
+                            try {
+                                camera.addCallbackBuffer(data);
+                            } catch (Exception e) {
+                                Log.e("CameraTest", "addCallbackBuffer error");
+
+                            }
+
+                            threads[1] = null;
                         }
+                    };
+                    threads[1].start();
+                }
+                if (threads[2] == null) {
+                    threads[2] = new Thread() {
+                        @Override
+                        public void run() {
+                            if (dataClient == null || !dataClient.isConnected()) {
+                                createDataGoogleApiConnection();
+
+                            }
 
 
-                        try {
-                            camera.addCallbackBuffer(data);
-                        } catch (Exception e) {
-                            Log.e("CameraTest", "addCallbackBuffer error");
+                            if (dataClient != null && dataClient.isConnected()) {
+                                Camera.Parameters parameters = camera.getParameters();
+                                int w = parameters.getPreviewSize().width;
+                                int h = parameters.getPreviewSize().height;
+                                int format = parameters.getPreviewFormat();
+                                YuvImage image = new YuvImage(data, format, w, h, null);
 
+                                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                                Rect area = new Rect(0, 0, w, h);
+                                image.compressToJpeg(area, 50, out);
+
+                                Bitmap bm = BitmapFactory.decodeByteArray(out.toByteArray(), 0, out.size());
+                                Matrix matrix = new Matrix();
+
+                                matrix.postRotate(rotation);
+
+                                Bitmap rotatedBitmap = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), matrix, true);
+
+                                Asset asset = createAssetFromBitmap(rotatedBitmap);
+                                final PutDataMapRequest request = PutDataMapRequest.create("/image");
+                                DataMap map = request.getDataMap();
+                                map.putLong("time", new Date().getTime()); // MOST IMPORTANT LINE FOR TIMESTAMP
+                                map.putAsset("profileImage", asset);
+                                Wearable.DataApi.putDataItem(dataClient, request.asPutDataRequest());
+                            }
+
+
+                            try {
+                                camera.addCallbackBuffer(data);
+                            } catch (Exception e) {
+                                Log.e("CameraTest", "addCallbackBuffer error");
+
+                            }
+
+                            threads[2] = null;
                         }
-
-                        thread = null;
-                    }
-                };
-                thread.start();
+                    };
+                    threads[2].start();
+                }
                 System.gc();
             }
 
@@ -388,7 +523,7 @@ public class CameraPreview extends SurfaceView implements
             mCamera.release();
         } catch (Exception e) {
             e.printStackTrace();
-            return;
+
         }
         mCamera = null;
     }
@@ -459,6 +594,7 @@ public class CameraPreview extends SurfaceView implements
 
         }
     }
+
 
 }
 

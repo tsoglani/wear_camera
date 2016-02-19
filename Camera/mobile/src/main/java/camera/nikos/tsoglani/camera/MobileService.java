@@ -3,6 +3,7 @@ package camera.nikos.tsoglani.camera;
 import android.content.Intent;
 import android.hardware.Camera;
 import android.widget.Toast;
+
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
@@ -12,10 +13,10 @@ import com.google.android.gms.wearable.Node;
 import com.google.android.gms.wearable.NodeApi;
 import com.google.android.gms.wearable.Wearable;
 import com.google.android.gms.wearable.WearableListenerService;
+
 import java.util.List;
 
 public class MobileService extends WearableListenerService {
-
     private Camera cam = null;
     private String curentCommand = null;
 
@@ -29,21 +30,64 @@ public class MobileService extends WearableListenerService {
 
 
         if (message.equals("start")) {
+            if (CameraActivity.cameraActivity != null) {// not tested .. is for restart when the application in mobile is already open ( rare )
+                Intent startMain = new Intent(Intent.ACTION_MAIN);
+                startMain.addCategory(Intent.CATEGORY_HOME);
+                startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startMain.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(startMain);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
+
+
             Intent intent = new Intent(this, CameraActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
             startActivity(intent);
 
+
+
         } else if (message.equals("OpenFrontCamera")) {
-            CameraActivity.cameraActivity.getCameraInstance(CameraActivity.BACK_CAMERA);
+            CameraActivity.cameraActivity.runOnUiThread(new Thread() {
+                @Override
+                public void run() {
+                    CameraActivity.cameraActivity.getCameraInstance(CameraActivity.BACK_CAMERA);
+                }
+            });
         } else if (message.equals("OpenBackCamera")) {
-            CameraActivity.cameraActivity.getCameraInstance(CameraActivity.BACK_CAMERA);
+            CameraActivity.cameraActivity.runOnUiThread(new Thread() {
+                @Override
+                public void run() {
+                    CameraActivity.cameraActivity.getCameraInstance(CameraActivity.BACK_CAMERA);
+                }
+            });
         } else if (message.equals("Capture")) {
-            CameraActivity.cameraActivity.capture();
+            CameraActivity.cameraActivity.runOnUiThread(new Thread() {
+                @Override
+                public void run() {
+                    CameraActivity.cameraActivity.capture();
+                }
+            });
         } else if (message.equals("SwitchFlash")) {
-            CameraActivity.cameraActivity.switchFlash();
+            CameraActivity.cameraActivity.runOnUiThread(new Thread() {
+                @Override
+                public void run() {
+                    CameraActivity.cameraActivity.switchFlash();
+                }
+            });
         } else if (message.equals("SwitchCamera")) {
-            CameraActivity.cameraActivity.switchCamera();
+            CameraActivity.cameraActivity.runOnUiThread(new Thread() {
+                @Override
+                public void run() {
+                    CameraActivity.cameraActivity.switchCamera();
+                }
+            });
         } else if (message.equals("close_connection") || message.equals("close_application")) {
             Intent startMain = new Intent(Intent.ACTION_MAIN);
             startMain.addCategory(Intent.CATEGORY_HOME);
@@ -51,6 +95,14 @@ public class MobileService extends WearableListenerService {
             startMain.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(startMain);
         }
+
+        if (messageEvent.getPath().equals("/zoom")) {
+
+            int zoom = Integer.parseInt(message);
+            CameraActivity.cameraActivity.mCameraPreview.setZoom(zoom);
+        }
+
+
 //        else if (message.equals("getCameraPicture")) {
 //            Toast.makeText(MobileService.this, "Message = " + message, Toast.LENGTH_SHORT).show();
 //            CameraActivity.cameraActivity.sendCameraBitmap();
@@ -85,7 +137,7 @@ public class MobileService extends WearableListenerService {
     private GoogleApiClient client;
 
     private void sendMessage(final String message, final byte[] payload) {
-        if (client == null) {
+        if (client == null || !client.isConnected()) {
             onReadyForContent();
         }
         if (client != null)
@@ -112,7 +164,6 @@ public class MobileService extends WearableListenerService {
                 }
             });
     }
-
 
 
     @Override

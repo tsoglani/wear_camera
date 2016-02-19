@@ -30,11 +30,12 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
         stub.setOnLayoutInflatedListener(new WatchViewStub.OnLayoutInflatedListener() {
             @Override
             public void onLayoutInflated(WatchViewStub stub) {
+                onReadyForContent();
                 camerButton = (Button) stub.findViewById(R.id.openCamera);
                 camerButton.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        sendMessage("main", "start".getBytes());
+                        sendMessage("/main", "start".getBytes());
                     }
                 });
             }
@@ -44,6 +45,7 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
 
     public void onReadyForContent() {
         client = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
                     @Override
                     public void onConnectionFailed(ConnectionResult result) {
@@ -67,7 +69,7 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
     private GoogleApiClient client;
 
     private void sendMessage(final String message, final byte[] payload) {
-        if (client == null) {
+        if (client == null||!client.isConnected()) {
             onReadyForContent();
         }
         if (client != null)
@@ -82,15 +84,11 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
                             @Override
                             public void onResult(MessageApi.SendMessageResult sendMessageResult) {
                                 if (sendMessageResult.getStatus().isSuccess()) {
-                                    Intent intent = new Intent(MainActivity.this, CameraActivity.class);
-                                    startActivity(intent);
-                                    if (client != null) {
-                                        Wearable.MessageApi.removeListener(client, MainActivity.this);
-                                        client.disconnect();
-                                        client = null;
-                                    }
+
+                                    Toast.makeText(MainActivity.this, "sucess", Toast.LENGTH_SHORT).show();
                                 } else {
                                     client = null;
+                                    Toast.makeText(MainActivity.this, "Not connected", Toast.LENGTH_SHORT).show();
                                 }
 
                             }
@@ -102,17 +100,27 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
     }
 
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
+//    @Override
+//    public void onDestroy() {
+//        super.onDestroy();
+//        if (client != null) {
+//            Wearable.MessageApi.removeListener(client, this);
+//            client.disconnect();
+//            client = null;
+//        }
+//
+//    }
+
+
+    private  void goToCameraView(){
+        Intent intent = new Intent(MainActivity.this, CameraActivity.class);
+        startActivity(intent);
         if (client != null) {
-            Wearable.MessageApi.removeListener(client, this);
+            Wearable.MessageApi.removeListener(client, MainActivity.this);
             client.disconnect();
             client = null;
         }
-
     }
-
     @Override
     protected void onStop() {
         super.onStop();
@@ -125,6 +133,7 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
 
     @Override
     public void onConnected(Bundle bundle) {
+        Toast.makeText(MainActivity.this, "onConected", Toast.LENGTH_SHORT).show();
         Wearable.MessageApi.addListener(client, this);
     }
 
@@ -135,6 +144,12 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
 
     @Override
     public void onMessageReceived(MessageEvent messageEvent) {
+        //Log.i(MobileService.class.getSimpleName(), "WEAR Message " + messageEvent.getPath());
 
+        String message = new String(messageEvent.getData());
+        Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+        if(message.equals("start")){
+            goToCameraView();
+        }
     }
 }

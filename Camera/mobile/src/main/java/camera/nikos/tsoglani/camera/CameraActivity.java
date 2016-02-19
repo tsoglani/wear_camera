@@ -4,21 +4,41 @@ import android.annotation.TargetApi;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.hardware.Camera;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.media.ExifInterface;
+import android.nfc.Tag;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.PowerManager;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Display;
+import android.view.Surface;
 import android.view.View;
 import android.widget.Button;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.wearable.MessageApi;
+import com.google.android.gms.wearable.Node;
+import com.google.android.gms.wearable.NodeApi;
+import com.google.android.gms.wearable.Wearable;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -26,8 +46,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
-public class CameraActivity extends AppCompatActivity {
+public class CameraActivity extends AppCompatActivity implements OrientationManager.OrientationListener {
     CameraPreview mCameraPreview;
     Camera mCamera;
     private Button switch_camera, capture, open_galery, flash;
@@ -39,11 +60,16 @@ public class CameraActivity extends AppCompatActivity {
     private boolean isFlashOn = false;
     static CameraActivity cameraActivity;
 
+    int rotationMode = 0;
+    final int LANDSHAPE = 1, POIRTRAIT = 0,POIRTRAIT_REVERSE=2,LANDSHAPE_REVERSE=3;
+    private OrientationManager orientationManager;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         cameraActivity = this;
         setContentView(R.layout.activity_camera);
+        sendMessage("/camera", "start".getBytes());
         camera_relatice = (RelativeLayout) findViewById(R.id.camera_relatice);
         switch_camera = (Button) findViewById(R.id.switch_camera);
         open_galery = (Button) findViewById(R.id.open_galery);
@@ -51,20 +77,19 @@ public class CameraActivity extends AppCompatActivity {
         mPowerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
         capture = (Button) findViewById(R.id.capture);
 
-
         turnOnScreen();
 
+        OrientationManager orientationManager = new OrientationManager(this, SensorManager.SENSOR_DELAY_NORMAL, this);
+        orientationManager.enable();
         flash.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mCamera.setPreviewCallbackWithBuffer(null);
                 switchFlash();
             }
         });
         open_galery.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mCamera.setPreviewCallbackWithBuffer(null);
                 openImagesGalery();
             }
         });
@@ -72,14 +97,12 @@ public class CameraActivity extends AppCompatActivity {
         capture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mCamera.setPreviewCallbackWithBuffer(null);
                 capture();
             }
         });
         switch_camera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mCamera.setPreviewCallbackWithBuffer(null);
                 switchCamera();
             }
         });
@@ -93,6 +116,7 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     void capture() {
+        mCamera.setPreviewCallbackWithBuffer(null);
 
         mCamera.takePicture(null, null, picture);
 
@@ -197,11 +221,13 @@ public class CameraActivity extends AppCompatActivity {
     };
 
     void switchFlash() {
+        mCamera.setPreviewCallbackWithBuffer(null);
+
         isFlashOn = !isFlashOn;
         if (isFlashOn) {
             flash.setBackground(getResources().getDrawable(R.drawable.flash_yes));
             Camera.Parameters p = mCamera.getParameters();
-            p.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+            p.setFlashMode(Camera.Parameters.FLASH_MODE_AUTO);
             mCamera.setParameters(p);
         } else {
             flash.setBackground(getResources().getDrawable(R.drawable.flash_no));
@@ -209,6 +235,7 @@ public class CameraActivity extends AppCompatActivity {
             p.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
             mCamera.setParameters(p);
         }
+        mCameraPreview.refreshCamera(mCamera);
     }
 //
 //
@@ -271,7 +298,7 @@ public class CameraActivity extends AppCompatActivity {
 ////
 //    }
 
-
+    //private int picRotation=-90;
     private void addForStoring(byte[] bytes) {
 //        Toast.makeText(CameraActivity.this, "addForStoring start", Toast.LENGTH_SHORT).show();
 
@@ -281,8 +308,19 @@ public class CameraActivity extends AppCompatActivity {
 
         Matrix matrix = new Matrix();
 
-        matrix.postRotate(-90);
+//        if(rotationMode==POIRTRAIT)
+//            Toast.makeText(CameraActivity.this, "POIRTRAIT", Toast.LENGTH_SHORT).show();
+//        if(rotationMode==LANDSHAPE)
+//            Toast.makeText(CameraActivity.this, "LANDSHAPE", Toast.LENGTH_SHORT).show();
 
+
+        if (rotationMode == LANDSHAPE) {
+            matrix.postRotate(0);
+        } if (rotationMode == LANDSHAPE_REVERSE) {
+            matrix.postRotate(-180);
+        } else  if (rotationMode == POIRTRAIT) {
+            matrix.postRotate(-90);
+        }
         Bitmap rotatedBitmap = Bitmap.createBitmap(bitmap.getBitmap(), 0, 0, bitmap.getBitmap().getWidth(), bitmap.getBitmap().getHeight(), matrix, true);
 
         Matrix matrix2 = new Matrix();
@@ -307,7 +345,55 @@ public class CameraActivity extends AppCompatActivity {
     }
 
 
+    private Bitmap getRotatedImage(Bitmap bitmap, String photoPath) throws IOException {
+        ExifInterface ei = new ExifInterface(photoPath);
+        int orientation = ei.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
+        Bitmap bmp = null;
+        switch (orientation) {
+            case ExifInterface.ORIENTATION_ROTATE_90:
+                bmp = rotateImage(bitmap, 90);
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_180:
+                bmp = rotateImage(bitmap, 180);
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_270:
+                bmp = rotateImage(bitmap, 270);
+                break;
+            default:
+                bmp = rotateImage(bitmap, 0);
+
+        }
+
+        return bmp;
+    }
+
+    public static Bitmap rotateImage(Bitmap source, float angle) {
+        Bitmap retVal;
+
+        Matrix matrix = new Matrix();
+        matrix.postRotate(angle);
+        retVal = Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
+
+        return retVal;
+    }
+
+
+    private void goToMenu() {
+        Intent startMain = new Intent(Intent.ACTION_MAIN);
+        startMain.addCategory(Intent.CATEGORY_HOME);
+        startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startMain.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(startMain);
+    }
+
     void switchCamera() {
+        if (mCamera == null) {
+            goToMenu();
+            return;
+        }
+
+        mCamera.setPreviewCallbackWithBuffer(null);
+
         if (curentCameraMode == FRONT_CAMERA) {
             getCameraInstance(BACK_CAMERA);
         } else if (curentCameraMode == BACK_CAMERA) {
@@ -329,6 +415,7 @@ public class CameraActivity extends AppCompatActivity {
                 camera = Camera.open();
             if (FRONT_CAMERA == cameraMode)
                 camera = openFrontFacingCamera();
+
 
             mCamera = camera;
             mCamera.setDisplayOrientation(90);
@@ -425,10 +512,14 @@ public class CameraActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        if (mCameraPreview != null)
+        cameraActivity = null;
+        super.onDestroy();
+
+        if (mCameraPreview != null) {
             mCameraPreview.onStop();
 
-        super.onDestroy();
+        }
+
 
         try {
             if (mCamera != null) {
@@ -494,6 +585,8 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     private void openImagesGalery() {
+        mCamera.setPreviewCallbackWithBuffer(null);
+
         int OPEN_GALLERY = 1;
         Intent intent;// = new Intent();
 //        intent.setType("image/*");
@@ -584,5 +677,136 @@ public class CameraActivity extends AppCompatActivity {
     }
 
 
+    public void onReadyForContent() {
+        client = new GoogleApiClient.Builder(this)
+                .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
+                    @Override
+                    public void onConnectionFailed(ConnectionResult result) {
+
+                    }
+                })
+                .addApi(Wearable.API)
+                .build();
+
+        client.connect();
+
+    }
+
+    private GoogleApiClient client;
+
+    private void sendMessage(final String message, final byte[] payload) {
+        if (client == null || !client.isConnected()) {
+            onReadyForContent();
+        }
+        if (client != null)
+            Wearable.NodeApi.getConnectedNodes(client).setResultCallback(new ResultCallback<NodeApi.GetConnectedNodesResult>() {
+                @Override
+                public void onResult(NodeApi.GetConnectedNodesResult getConnectedNodesResult) {
+                    List<Node> nodes = getConnectedNodesResult.getNodes();
+                    for (Node node : nodes) {
+
+
+                        Wearable.MessageApi.sendMessage(client, node.getId(), message, payload).setResultCallback(new ResultCallback<MessageApi.SendMessageResult>() {
+                            @Override
+                            public void onResult(MessageApi.SendMessageResult sendMessageResult) {
+                                if (sendMessageResult.getStatus().isSuccess()) {
+
+                                } else {
+                                    client = null;
+                                    Toast.makeText(CameraActivity.this, "Not connected", Toast.LENGTH_SHORT).show();
+                                }
+
+                            }
+                        });
+                    }
+
+                }
+            });
+    }
+
+
+//    private int getScreenOrientation() {
+//        int rotation = getWindowManager().getDefaultDisplay().getRotation();
+//        DisplayMetrics dm = new DisplayMetrics();
+//        getWindowManager().getDefaultDisplay().getMetrics(dm);
+//        int width = dm.widthPixels;
+//        int height = dm.heightPixels;
+//        int orientation;
+//        // if the device's natural orientation is portrait:
+//        if ((rotation == Surface.ROTATION_0
+//                || rotation == Surface.ROTATION_180) && height > width ||
+//                (rotation == Surface.ROTATION_90
+//                        || rotation == Surface.ROTATION_270) && width > height) {
+//            switch (rotation) {
+//                case Surface.ROTATION_0:
+//                    orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+//                    break;
+//                case Surface.ROTATION_90:
+//                    orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+//                    break;
+//                case Surface.ROTATION_180:
+//                    orientation =
+//                            ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
+//                    break;
+//                case Surface.ROTATION_270:
+//                    orientation =
+//                            ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
+//                    break;
+//                default:
+//                    Log.e("TAG", "Unknown screen orientation. Defaulting to " +
+//                            "portrait.");
+//                    orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+//                    break;
+//            }
+//        }
+//        // if the device's natural orientation is landscape or if the device
+//        // is square:
+//        else {
+//            switch (rotation) {
+//                case Surface.ROTATION_0:
+//                    orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+//                    break;
+//                case Surface.ROTATION_90:
+//                    orientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+//                    break;
+//                case Surface.ROTATION_180:
+//                    orientation =
+//                            ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
+//                    break;
+//                case Surface.ROTATION_270:
+//                    orientation =
+//                            ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
+//                    break;
+//                default:
+//                    Log.e("TAG", "Unknown screen orientation. Defaulting to " +
+//                            "landscape.");
+//                    orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+//                    break;
+//            }
+//        }
+//
+//        return orientation;
+//    }
+
+
+    @Override
+    public void onOrientationChange(OrientationManager.ScreenOrientation screenOrientation) {
+        switch (screenOrientation) {
+            case PORTRAIT:
+            case REVERSED_PORTRAIT:
+                rotationMode=POIRTRAIT;
+
+                break;
+            case REVERSED_LANDSCAPE:
+                rotationMode=LANDSHAPE_REVERSE;
+
+                break;
+            case LANDSCAPE:
+                rotationMode=LANDSHAPE;
+
+                break;
+        }
+
+    }
 }
 
