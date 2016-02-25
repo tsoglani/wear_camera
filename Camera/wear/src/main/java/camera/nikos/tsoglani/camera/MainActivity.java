@@ -85,7 +85,7 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
                             public void onResult(MessageApi.SendMessageResult sendMessageResult) {
                                 if (sendMessageResult.getStatus().isSuccess()) {
 
-                                    Toast.makeText(MainActivity.this, "sucess", Toast.LENGTH_SHORT).show();
+//                                    Toast.makeText(MainActivity.this, "sucess", Toast.LENGTH_SHORT).show();
                                 } else {
                                     client = null;
                                     Toast.makeText(MainActivity.this, "Not connected", Toast.LENGTH_SHORT).show();
@@ -133,7 +133,7 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
 
     @Override
     public void onConnected(Bundle bundle) {
-        Toast.makeText(MainActivity.this, "onConected", Toast.LENGTH_SHORT).show();
+//        Toast.makeText(MainActivity.this, "onConected", Toast.LENGTH_SHORT).show();
         Wearable.MessageApi.addListener(client, this);
     }
 
@@ -147,7 +147,7 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
         //Log.i(MobileService.class.getSimpleName(), "WEAR Message " + messageEvent.getPath());
 
         String message = new String(messageEvent.getData());
-        Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+//        Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
         if(message.equals("start")){
             goToCameraView();
         }

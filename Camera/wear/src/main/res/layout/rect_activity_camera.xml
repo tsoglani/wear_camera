@@ -18,13 +18,13 @@
         android:layout_height="40dp"
         android:layout_alignParentEnd="true"
         android:layout_alignParentTop="true"
-        android:background="@drawable/flash_no" />
+        android:background="@drawable/flash_no_blue2" />
 
     <Button
         android:id="@+id/switchCamera"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:background="@drawable/switch_camera"
+        android:background="@drawable/switch_camera_blue2"
         android:layout_alignParentTop="true"
         android:layout_alignParentStart="true" />
 </RelativeLayout>

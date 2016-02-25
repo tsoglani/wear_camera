@@ -61,7 +61,7 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
     static CameraActivity cameraActivity;
 
     int rotationMode = 0;
-    final int LANDSHAPE = 1, POIRTRAIT = 0,POIRTRAIT_REVERSE=2,LANDSHAPE_REVERSE=3;
+    final int LANDSHAPE = 1, POIRTRAIT = 0, POIRTRAIT_REVERSE = 2, LANDSHAPE_REVERSE = 3;
     private OrientationManager orientationManager;
 
     @Override
@@ -316,9 +316,13 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
 
         if (rotationMode == LANDSHAPE) {
             matrix.postRotate(0);
-        } if (rotationMode == LANDSHAPE_REVERSE) {
+        }
+        if (rotationMode == LANDSHAPE_REVERSE) {
             matrix.postRotate(-180);
-        } else  if (rotationMode == POIRTRAIT) {
+        } else if (rotationMode == POIRTRAIT) {
+            if(BACK_CAMERA == curentCameraMode){
+                matrix.postRotate(90);
+            }else
             matrix.postRotate(-90);
         }
         Bitmap rotatedBitmap = Bitmap.createBitmap(bitmap.getBitmap(), 0, 0, bitmap.getBitmap().getWidth(), bitmap.getBitmap().getHeight(), matrix, true);
@@ -411,10 +415,16 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
                 camera_relatice.removeView(mCameraPreview);
                 mCameraPreview = null;
             }
-            if (BACK_CAMERA == cameraMode)
+            if (BACK_CAMERA == cameraMode) {
                 camera = Camera.open();
-            if (FRONT_CAMERA == cameraMode)
-                camera = openFrontFacingCamera();
+            }
+            if (FRONT_CAMERA == cameraMode) {
+                try {
+                    camera = openFrontFacingCamera();
+                }catch (Exception e){
+                    camera =Camera.open();;
+                }
+            }
 
 
             mCamera = camera;
@@ -529,7 +539,6 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
                 mCamera = null;
             }
 
-            turnOffScreen();
             if (mCameraPreview != null) {
                 new Thread() {
                     @Override
@@ -672,8 +681,15 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
     @Override
     protected void onStop() {
         super.onStop();
+        try {
+            turnOffScreen();
+        }catch (Exception e){
 
-        mCameraPreview.finish();
+        }
+        if (mCameraPreview != null){
+            mCameraPreview.sendGoBack();
+            mCameraPreview.finish();
+        }
     }
 
 
@@ -794,15 +810,15 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
         switch (screenOrientation) {
             case PORTRAIT:
             case REVERSED_PORTRAIT:
-                rotationMode=POIRTRAIT;
+                rotationMode = POIRTRAIT;
 
                 break;
             case REVERSED_LANDSCAPE:
-                rotationMode=LANDSHAPE_REVERSE;
+                rotationMode = LANDSHAPE_REVERSE;
 
                 break;
             case LANDSCAPE:
-                rotationMode=LANDSHAPE;
+                rotationMode = LANDSHAPE;
 
                 break;
         }

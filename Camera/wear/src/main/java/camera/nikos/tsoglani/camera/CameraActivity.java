@@ -1,11 +1,7 @@
 package camera.nikos.tsoglani.camera;
 
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
-import android.hardware.Camera;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
 import android.support.wearable.view.WatchViewStub;
@@ -20,24 +16,24 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.wearable.Asset;
-import com.google.android.gms.wearable.DataApi;
-import com.google.android.gms.wearable.DataEvent;
-import com.google.android.gms.wearable.DataEventBuffer;
-import com.google.android.gms.wearable.DataMapItem;
+import com.google.android.gms.wearable.Channel;
+import com.google.android.gms.wearable.ChannelApi;
 import com.google.android.gms.wearable.MessageApi;
 import com.google.android.gms.wearable.Node;
 import com.google.android.gms.wearable.NodeApi;
 import com.google.android.gms.wearable.Wearable;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class CameraActivity extends Activity implements DataApi.DataListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
-    private RelativeLayout cameraView;
+public class CameraActivity extends Activity implements  GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
+    static RelativeLayout cameraView;
     private Button switchCamera, capture, flash;
     private boolean isFlashUsed = false;
-
+static CameraActivity cameraActivity;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -46,6 +42,7 @@ public class CameraActivity extends Activity implements DataApi.DataListener, Go
         stub.setOnLayoutInflatedListener(new WatchViewStub.OnLayoutInflatedListener() {
             @Override
             public void onLayoutInflated(WatchViewStub stub) {
+                cameraActivity=CameraActivity.this;
                 cameraView = (RelativeLayout) stub.findViewById(R.id.cameraView);
                 switchCamera = (Button) findViewById(R.id.switchCamera);
                 flash = (Button) findViewById(R.id.flash);
@@ -73,9 +70,9 @@ public class CameraActivity extends Activity implements DataApi.DataListener, Go
                             @Override
                             public void run() {
                                 if (isFlashUsed) {
-                                    flash.setBackground(getResources().getDrawable(R.drawable.flash_yes));
+                                    flash.setBackground(getResources().getDrawable(R.drawable.flash_yes_blue_));
                                 } else {
-                                    flash.setBackground(getResources().getDrawable(R.drawable.flash_no));
+                                    flash.setBackground(getResources().getDrawable(R.drawable.flash_no_blue2));
 
                                 }
                             }
@@ -83,6 +80,24 @@ public class CameraActivity extends Activity implements DataApi.DataListener, Go
                     }
                 });
                 createDataConnection();
+                cameraView.setOnTouchListener(new View.OnTouchListener() {
+                    @Override
+                    public boolean onTouch(View v, MotionEvent event) {
+                        int action = event.getAction();
+
+
+                        if (event.getPointerCount() ==2) {
+                            // handle multi-touch events
+                            if (action == MotionEvent.ACTION_POINTER_DOWN) {
+                                mDist = getFingerSpacing(event);
+                            } else if (action == MotionEvent.ACTION_MOVE) {
+                                handleZoom(event);
+                            }
+
+                        }
+                        return true;
+                    }
+                });
                 new Thread() {
                     @Override
                     public void run() {
@@ -100,12 +115,12 @@ public class CameraActivity extends Activity implements DataApi.DataListener, Go
     }
 
 
-    private GoogleApiClient dataClient;
+    static GoogleApiClient channelClient;
 
     private GoogleApiClient messageClient;
 
     public void createDataConnection() {
-        dataClient = new GoogleApiClient.Builder(this)
+        channelClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
                     @Override
@@ -117,7 +132,7 @@ public class CameraActivity extends Activity implements DataApi.DataListener, Go
                 .addApi(Wearable.API)
                 .build();
 
-        dataClient.connect();
+        channelClient.connect();
 
     }
 
@@ -166,6 +181,7 @@ public class CameraActivity extends Activity implements DataApi.DataListener, Go
                             if (sendMessageResult.getStatus().isSuccess()) {
                                 if (new String(payload).equals("close_connection")) {
                                     closeDataConnection();
+                                    closeMessageConnection();
                                 }
                             } else {
 
@@ -180,30 +196,18 @@ public class CameraActivity extends Activity implements DataApi.DataListener, Go
     }
 
     @Override
-    protected void onStop() {
+    public void onStop() {
         super.onStop();
-        closeDataConnection();
-        new Thread() {
-            @Override
-            public void run() {
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+        sendMessage("/close_application", "close_application".getBytes());
+//        closeDataConnection();
 
-                sendMessage("/cameraview", "close_connection".getBytes());
-            }
-        }.start();
-
-        closeMessageConnection();
     }
 
     private void closeDataConnection() {
-        if (dataClient != null) {
-            Wearable.DataApi.removeListener(dataClient, this);
-            dataClient.disconnect();
-            dataClient = null;
+        if (channelClient != null) {
+//            Wearable.DataApi.removeListener(channelClient, this);
+            channelClient.disconnect();
+            channelClient = null;
         }
     }
 
@@ -216,37 +220,39 @@ public class CameraActivity extends Activity implements DataApi.DataListener, Go
 
     @Override
     public void onConnected(Bundle connectionHint) {
-        if (dataClient == null || !dataClient.isConnected()) {
-            dataClient = null;
+        if (channelClient == null || !channelClient.isConnected()) {
+            channelClient = null;
 
         }
-        if (dataClient != null)
-            Wearable.DataApi.addListener(dataClient, this);
+//        if (channelClient != null)
+//            Wearable.DataApi.addListener(channelClient, this);
 
     }
+
+
 
     @Override
     public void onConnectionSuspended(int i) {
 
     }
 
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        // Get the pointer ID
-        int action = event.getAction();
-
-
-        if (event.getPointerCount() > 1) {
-            // handle multi-touch events
-            if (action == MotionEvent.ACTION_POINTER_DOWN) {
-                mDist = getFingerSpacing(event);
-            } else if (action == MotionEvent.ACTION_MOVE) {
-                handleZoom(event);
-            }
-
-        }
-        return true;
-    }
+//    @Override
+//    public boolean onTouchEvent(MotionEvent event) {
+//        // Get the pointer ID
+//        int action = event.getAction();
+//
+//
+//        if (event.getPointerCount() > 1) {
+//            // handle multi-touch events
+//            if (action == MotionEvent.ACTION_POINTER_DOWN) {
+//                mDist = getFingerSpacing(event);
+//            } else if (action == MotionEvent.ACTION_MOVE) {
+//                handleZoom(event);
+//            }
+//
+//        }
+//        return true;
+//    }
 
     float mDist;
     int zoom = 0;
@@ -274,87 +280,94 @@ public class CameraActivity extends Activity implements DataApi.DataListener, Go
         return (float) Math.sqrt(x * x + y * y);
     }
 
-    @Override
-    public void onDataChanged(DataEventBuffer dataEventBuffer) {
+//    AsyncTask<Void, Void, Void> async;
+//
+//    @Override
+//    public void onDataChanged(DataEventBuffer dataEventBuffer) {
+//
+//        for (final DataEvent event : dataEventBuffer) {
+//            Toast.makeText(CameraActivity.this, event.getDataItem().getUri().getPath(), Toast.LENGTH_SHORT).show();
+//
+//            if (event.getType() == DataEvent.TYPE_CHANGED &&
+//                    event.getDataItem().getUri().getPath().equals("/image") || event.getDataItem().getUri().getPath().equals("/cameraImage")) {
+//                if(async!=null){
+//                    continue;
+//                }
+//                DataMapItem dataMapItem = DataMapItem.fromDataItem(event.getDataItem());
+//                final Asset profileAsset = dataMapItem.getDataMap().getAsset("profileImage");
+//
+//                async = new AsyncTask<Void, Void, Void>() {
+//                    Bitmap bitmap;
+//                    BitmapDrawable ob;
+//
+//                    @Override
+//                    protected Void doInBackground(Void... params) {
+//                        bitmap = loadBitmapFromAsset(profileAsset);
+//                        ob = new BitmapDrawable(getResources(), bitmap);
+//
+////                        Wearable.DataApi.deleteDataItems(channelClient, getUriForDataItem());
+////                        channelClient.disconnect();
+//
+//                        return null;
+//                    }
+//
+//                    @Override
+//                    protected void onPostExecute(Void aVoid) {
+//                        super.onPostExecute(aVoid);
+//                        if (ob != null) {
+//                            cameraView.setBackground(ob);
+//                        }
+////                        ob = null;
+////                        sendMessage("/cameraActivity","getCameraPicture".getBytes());
+//                        async=null;
+//System.gc();
+//                    }
+//                };
+//                async.execute();
+////                Bitmap bitmap = loadBitmapFromAsset(profileAsset);
+//
+//
+//                // Do something with the bitmap
+//            } else if (event.getType() == DataEvent.TYPE_CHANGED &&
+//                    event.getDataItem().getUri().getPath().equals("/close")) {
+//                Intent intent = new Intent(this, MainActivity.class);
+//                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+//                startActivity(intent);
+//            }
+//
+//
+//        }
+//        dataEventBuffer.release();
+//        System.gc();
+//    }
 
-        for (final DataEvent event : dataEventBuffer) {
-            Toast.makeText(CameraActivity.this, event.getDataItem().getUri().getPath(), Toast.LENGTH_SHORT).show();
 
-            if (event.getType() == DataEvent.TYPE_CHANGED &&
-                    event.getDataItem().getUri().getPath().equals("/image") || event.getDataItem().getUri().getPath().equals("/cameraImage")) {
-                DataMapItem dataMapItem = DataMapItem.fromDataItem(event.getDataItem());
-                final Asset profileAsset = dataMapItem.getDataMap().getAsset("profileImage");
-                new AsyncTask<Void, Void, Void>() {
-                    Bitmap bitmap;
-                    BitmapDrawable ob;
-
-                    @Override
-                    protected Void doInBackground(Void... params) {
-                        bitmap = loadBitmapFromAsset(profileAsset);
-                        ob = new BitmapDrawable(getResources(), bitmap);
-
-//                        Wearable.DataApi.deleteDataItems(dataClient, getUriForDataItem());
-//                        dataClient.disconnect();
-
-                        return null;
-                    }
-
-                    @Override
-                    protected void onPostExecute(Void aVoid) {
-                        super.onPostExecute(aVoid);
-                        if (ob != null) {
-                            cameraView.setBackground(ob);
-                        }
-                        ob = null;
-//                        sendMessage("/cameraActivity","getCameraPicture".getBytes());
-
-
-                    }
-                }.execute();
-//                Bitmap bitmap = loadBitmapFromAsset(profileAsset);
-
-
-                // Do something with the bitmap
-            } else if (event.getType() == DataEvent.TYPE_CHANGED &&
-                    event.getDataItem().getUri().getPath().equals("/close")) {
-                Intent intent = new Intent(this, MainActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                startActivity(intent);
-            }
-
-
-        }
-        dataEventBuffer.release();
-        System.gc();
-    }
-
-
-    private int TIMEOUT_MS = 1000;
-
-    public Bitmap loadBitmapFromAsset(Asset asset) {
-
-        if (asset == null) {
-            throw new IllegalArgumentException("Asset must be non-null");
-        }
-        if (dataClient == null) {
-            return null;
-        }
-        ConnectionResult result = dataClient.blockingConnect(TIMEOUT_MS, TimeUnit.MILLISECONDS);
-        if (!result.isSuccess()) {
-            return null;
-        }
-        // convert asset into a file descriptor and block until it's ready
-        InputStream assetInputStream = Wearable.DataApi.getFdForAsset(
-                dataClient, asset).await().getInputStream();
-//        dataClient.disconnect();
-
-        if (assetInputStream == null) {
-            Log.w("request uknown", "Requested an unknown Asset.");
-            return null;
-        }
-        // decode the stream into a bitmap
-        return BitmapFactory.decodeStream(assetInputStream);
-    }
+//    private int TIMEOUT_MS = 1000;
+//
+//    public Bitmap loadBitmapFromAsset(Asset asset) {
+//
+//        if (asset == null) {
+//            throw new IllegalArgumentException("Asset must be non-null");
+//        }
+//        if (channelClient == null) {
+//            return null;
+//        }
+//        ConnectionResult result = channelClient.blockingConnect(TIMEOUT_MS, TimeUnit.MILLISECONDS);
+//        if (!result.isSuccess()) {
+//            return null;
+//        }
+//        // convert asset into a file descriptor and block until it's ready
+//        InputStream assetInputStream = Wearable.DataApi.getFdForAsset(
+//                channelClient, asset).await().getInputStream();
+////        channelClient.disconnect();
+//
+//        if (assetInputStream == null) {
+//            Log.w("request uknown", "Requested an unknown Asset.");
+//            return null;
+//        }
+//        // decode the stream into a bitmap
+//        return BitmapFactory.decodeStream(assetInputStream);
+//    }
 
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {

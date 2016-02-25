@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">Wear Camera</string>
-    <string name="title_activity_camera">CameraActivity</string>
+    <string name="title_activity_camera">Wear Camera</string>
 </resources>

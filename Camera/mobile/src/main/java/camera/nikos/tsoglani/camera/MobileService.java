@@ -1,7 +1,10 @@
 package camera.nikos.tsoglani.camera;
 
+import android.app.KeyguardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.hardware.Camera;
+import android.os.PowerManager;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -30,6 +33,7 @@ public class MobileService extends WearableListenerService {
 
 
         if (message.equals("start")) {
+            unlockTheScreen();
             if (CameraActivity.cameraActivity != null) {// not tested .. is for restart when the application in mobile is already open ( rare )
                 Intent startMain = new Intent(Intent.ACTION_MAIN);
                 startMain.addCategory(Intent.CATEGORY_HOME);
@@ -89,12 +93,14 @@ public class MobileService extends WearableListenerService {
                 }
             });
         } else if (message.equals("close_connection") || message.equals("close_application")) {
+            Toast.makeText(MobileService.this, "close_connection", Toast.LENGTH_SHORT).show();
             Intent startMain = new Intent(Intent.ACTION_MAIN);
             startMain.addCategory(Intent.CATEGORY_HOME);
             startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startMain.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(startMain);
         }
+
 
         if (messageEvent.getPath().equals("/zoom")) {
 
@@ -117,7 +123,30 @@ public class MobileService extends WearableListenerService {
 
     }
 
+private void unlockTheScreen(){
+    PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+    boolean isScreenOn = powerManager.isScreenOn();
 
+    if (!isScreenOn) {
+        //Screen is in OFF State
+        //Code to power on and release lock
+
+
+
+        KeyguardManager km = (KeyguardManager) this
+                .getSystemService(Context.KEYGUARD_SERVICE);
+        final KeyguardManager.KeyguardLock kl = km
+                .newKeyguardLock("MyKeyguardLock");
+        kl.disableKeyguard();
+
+        PowerManager pm = (PowerManager) this
+                .getSystemService(Context.POWER_SERVICE);
+        PowerManager.WakeLock wakeLock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK
+                | PowerManager.ACQUIRE_CAUSES_WAKEUP
+                | PowerManager.ON_AFTER_RELEASE, "MyWakeLock");
+        wakeLock.acquire();
+    }
+}
     public void onReadyForContent() {
         client = new GoogleApiClient.Builder(this)
                 .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
