@@ -4,8 +4,6 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
-import android.widget.Toast;
-
 import com.google.android.gms.wearable.Channel;
 import com.google.android.gms.wearable.WearableListenerService;
 
@@ -55,6 +53,7 @@ String path =channel.getPath();
             }
 //                channel.receiveFile(channelClient, Uri.fromFile(file), false);
         } else if (path.equals("/close")) {
+            CameraActivity.cameraActivity.willSendForClosing=false;
             Intent intent = new Intent(this, MainActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

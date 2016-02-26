@@ -16,15 +16,23 @@
         android:id="@+id/flash"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentTop="true"
-        android:background="@drawable/flash_no_blue2" />
+        android:background="@drawable/flash_no_blue2"
+        android:layout_alignTop="@+id/switchCamera"
+        android:layout_alignParentEnd="true" />
 
     <Button
         android:id="@+id/switchCamera"
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:background="@drawable/switch_camera_blue2"
-        android:layout_alignParentTop="true"
+        android:layout_centerVertical="true"
         android:layout_alignParentStart="true" />
+
+    <Button
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+      android:background="@drawable/video"
+        android:id="@+id/video"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true" />
 </RelativeLayout>

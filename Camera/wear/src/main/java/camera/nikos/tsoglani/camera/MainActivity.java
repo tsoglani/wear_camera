@@ -7,6 +7,7 @@ import android.support.wearable.view.WatchViewStub;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
+
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
@@ -31,6 +32,8 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
             @Override
             public void onLayoutInflated(WatchViewStub stub) {
                 onReadyForContent();
+                if(CameraActivity.cameraActivity==null||CameraActivity.cameraActivity.willSendForClosing)
+                sendMessage("/main", "main".getBytes());
                 camerButton = (Button) stub.findViewById(R.id.openCamera);
                 camerButton.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -69,7 +72,7 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
     private GoogleApiClient client;
 
     private void sendMessage(final String message, final byte[] payload) {
-        if (client == null||!client.isConnected()) {
+        if (client == null || !client.isConnected()) {
             onReadyForContent();
         }
         if (client != null)
@@ -84,7 +87,10 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
                             @Override
                             public void onResult(MessageApi.SendMessageResult sendMessageResult) {
                                 if (sendMessageResult.getStatus().isSuccess()) {
-
+                                    if (new String(payload).equals("close_application")) {
+                                        client.disconnect();
+                                        client = null;
+                                    }
 //                                    Toast.makeText(MainActivity.this, "sucess", Toast.LENGTH_SHORT).show();
                                 } else {
                                     client = null;
@@ -100,19 +106,16 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
     }
 
 
-//    @Override
-//    public void onDestroy() {
-//        super.onDestroy();
-//        if (client != null) {
-//            Wearable.MessageApi.removeListener(client, this);
-//            client.disconnect();
-//            client = null;
-//        }
-//
-//    }
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        sendMessage("/close_application", "close_application".getBytes());
 
 
-    private  void goToCameraView(){
+    }
+
+
+    private void goToCameraView() {
         Intent intent = new Intent(MainActivity.this, CameraActivity.class);
         startActivity(intent);
         if (client != null) {
@@ -121,6 +124,7 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
             client = null;
         }
     }
+
     @Override
     protected void onStop() {
         super.onStop();
@@ -147,8 +151,7 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
         //Log.i(MobileService.class.getSimpleName(), "WEAR Message " + messageEvent.getPath());
 
         String message = new String(messageEvent.getData());
-//        Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
-        if(message.equals("start")){
+        if (message.equals("start")) {
             goToCameraView();
         }
     }

@@ -4,28 +4,21 @@ import android.annotation.TargetApi;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.hardware.Camera;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.media.ExifInterface;
-import android.nfc.Tag;
+import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.PowerManager;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
-import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.Display;
-import android.view.Surface;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.RelativeLayout;
@@ -51,8 +44,8 @@ import java.util.List;
 public class CameraActivity extends AppCompatActivity implements OrientationManager.OrientationListener {
     CameraPreview mCameraPreview;
     Camera mCamera;
-    private Button switch_camera, capture, open_galery, flash;
-    private int curentCameraMode = FRONT_CAMERA;
+    private Button switch_camera, capture, open_galery, flash, videoCapture;
+    protected int curentCameraMode = FRONT_CAMERA;
     final static int FRONT_CAMERA = 0, BACK_CAMERA = 1;
     private PowerManager mPowerManager;
     private PowerManager.WakeLock mWakeLock;
@@ -76,9 +69,23 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
         flash = (Button) findViewById(R.id.flash);
         mPowerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
         capture = (Button) findViewById(R.id.capture);
-
+        videoCapture = (Button) findViewById(R.id.cam_to_video);
         turnOnScreen();
+        videoCapture.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
 
+                mCameraPreview.refreshCamera(mCamera);
+
+                if (!isVideoMode) {
+
+                    startCaptureVideo();
+                } else {
+                    stopCaptureVideo();
+                }
+//
+            }
+        });
         OrientationManager orientationManager = new OrientationManager(this, SensorManager.SENSOR_DELAY_NORMAL, this);
         orientationManager.enable();
         flash.setOnClickListener(new View.OnClickListener() {
@@ -97,6 +104,7 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
         capture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
                 capture();
             }
         });
@@ -122,94 +130,117 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
 
     }
 
-//    private Bitmap getScreenShot() {
-//        mCameraPreview.setDrawingCacheEnabled(true);
-//        mCameraPreview.buildDrawingCache(true);
-//        Bitmap bitmap = mCameraPreview.getDrawingCache();
-//        return bitmap;
-//    }
+
+    void startCaptureVideo() {
+        isVideoMode = true;
+        getCameraInstance(curentCameraMode);
+        videoCapture.setBackgroundResource(R.drawable.stop);
+    }
+
+    void stopCaptureVideo() {
+        videoCapture.setBackgroundResource(R.drawable.video);
+
+        mCameraPreview.stopVideo();
+    }
+
+
+    public boolean isVideoMode = false;
+    //    boolean isVideoRecording = false;
+    MediaRecorder mediaRecorder;
+
+//    private boolean prepareMediaRecorder() {
 //
-//    void capture2() {
-//        if (dataClient == null) {
-//            createDataGoogleApiConnection();
+////        if (curentCameraMode == FRONT_CAMERA) {
+//            getCameraInstance(BACK_CAMERA);
+////        }
+//
+//
+//        mediaRecorder = new MediaRecorder();
+//
+//        mCamera.unlock();
+//        mediaRecorder.setCamera(mCamera);
+//
+//        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+//        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+//
+//
+//
+////        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+////        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
+////        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H263);
+////        mediaRecorder.setVideoFrameRate(20);
+//
+//
+//
+//
+//        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+//        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
+//        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H263);
+//
+//
+//        mediaRecorder.setVideoFrameRate(20); // set to 20
+//
+//
+//        mediaRecorder.setPreviewDisplay(mCameraPreview.getHolder().getSurface());
+//
+//
+//
+//
+//
+////        mediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_720P));
+//        mediaRecorder.setOutputFile(initFile().getPath());
+//        mediaRecorder.setMaxDuration(2400000); //set maximum duration 60 sec.
+//        mediaRecorder.setMaxFileSize(300000000); //set maximum file size 50M
+//
+//
+//mCameraPreview.refreshCamera(mCamera);
+//
+//        //super.setVideoSize(quality.resX,quality.resY);
+//        try {
+//            mediaRecorder.prepare();
+//
+//        } catch (IllegalStateException e) {
+//            e.printStackTrace();
+//            releaseMediaRecorder();
+//            return false;
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            releaseMediaRecorder();
+//            return false;
 //        }
-//        new Thread() {
-//            @Override
-//            public void run() {
-//                mCamera.takePicture(null, null, picture2);
-//
-//
-//            }
-//        }.start();
+//        return true;
 //
 //    }
-//
-//    public Bitmap getBitmap() {
-//        mCameraPreview.setDrawingCacheEnabled(true);
-//        mCameraPreview.buildDrawingCache(true);
-//        Bitmap bitmap = Bitmap.createBitmap(mCameraPreview.getWidth(), mCameraPreview.getHeight(), Bitmap.Config.ARGB_8888);
-////        Canvas canvas = new Canvas(bitmap);
-////        canvas.drawBitmap(bitmap, mCameraPreview.getWidth(), mCameraPreview.getHeight(), null);
-////        mCameraPreview.draw(canvas);
-//        return bitmap;
-//    }
-//
-//    public void sendCameraBitmap() {
-//        if (dataClient == null) {
-//            createDataGoogleApiConnection();
-//        }
+
+//    private File initFile() {
+//        // File dir = new
+//        // File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
+//        // this
+//        File file;
+//        File dir = new File(Environment.getExternalStorageDirectory(), this
+//                .getClass().getPackage().getName());
 //
 //
-//        if (mCamera != null) {
+//        if (!dir.exists() && !dir.mkdirs()) {
 //
-//
-////            Asset asset = createAssetFromBitmap(mCameraPreview.getBackground());
-////            PutDataMapRequest request = PutDataMapRequest.create("/image");
-////            DataMap map = request.getDataMap();
-////            map.putLong("time", new Date().getTime()); // MOST IMPORTANT LINE FOR TIMESTAMP
-////            map.putAsset("profileImage", asset);
-////            if (dataClient != null)
-////                Wearable.DataApi.putDataItem(dataClient, request.asPutDataRequest());
-////           capture2();
+//            Toast.makeText(CameraActivity.this, "not record", Toast.LENGTH_SHORT);
+//            file = null;
 //        } else {
-//            Bitmap.Config conf = Bitmap.Config.ARGB_8888;
-//            Bitmap bmp = Bitmap.createBitmap(100, 100, conf);
-//            Asset asset = createAssetFromBitmap(bmp);
-//            PutDataMapRequest request = PutDataMapRequest.create("/image");
-//            DataMap map = request.getDataMap();
-//            map.putLong("time", new Date().getTime()); // MOST IMPORTANT LINE FOR TIMESTAMP
-//            map.putAsset("profileImage", asset);
-//            if (dataClient != null)
-//                Wearable.DataApi.putDataItem(dataClient, request.asPutDataRequest());
+//            file = new File(dir.getAbsolutePath(), new SimpleDateFormat(
+//                    "'IMG_'yyyyMMddHHmmss'.mp4'").format(new Date()));
 //        }
+//        return file;
 //    }
 
-//    Camera.PictureCallback picture2 = new Camera.PictureCallback() {
-//
-//        @Override
-//        public void onPictureTaken(byte[] data, Camera camera) {
-//            mCameraPreview.refreshCamera(mCamera);
-//
-//            BitmapDrawable bitmap = new BitmapDrawable(BitmapFactory.decodeByteArray(data,
-//                    0, data.length));
-//
-//
-//            Matrix matrix = new Matrix();
-//
-//            matrix.postRotate(-90);
-//
-//            Bitmap rotatedBitmap = Bitmap.createBitmap(bitmap.getBitmap(), 0, 0, bitmap.getBitmap().getWidth(), bitmap.getBitmap().getHeight(), matrix, true);
-//
-//            Asset asset = createAssetFromBitmap(rotatedBitmap);
-//            PutDataMapRequest request = PutDataMapRequest.create("/image");
-//            DataMap map = request.getDataMap();
-//            map.putLong("time", new Date().getTime()); // MOST IMPORTANT LINE FOR TIMESTAMP
-//            map.putAsset("profileImage", asset);
-//            if (dataClient != null)
-//                Wearable.DataApi.putDataItem(dataClient, request.asPutDataRequest());
-//        }
-//    };
 
+    private void releaseMediaRecorder() {
+        if (mediaRecorder != null) {
+            mediaRecorder.reset(); // clear recorder configuration
+            mediaRecorder.release(); // release the recorder object
+            mediaRecorder = null;
+            mCamera.lock(); // lock camera for later use
+        }
+    }
 
     Camera.PictureCallback picture = new Camera.PictureCallback() {
 
@@ -320,10 +351,10 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
         if (rotationMode == LANDSHAPE_REVERSE) {
             matrix.postRotate(-180);
         } else if (rotationMode == POIRTRAIT) {
-            if(BACK_CAMERA == curentCameraMode){
+            if (BACK_CAMERA == curentCameraMode) {
                 matrix.postRotate(90);
-            }else
-            matrix.postRotate(-90);
+            } else
+                matrix.postRotate(-90);
         }
         Bitmap rotatedBitmap = Bitmap.createBitmap(bitmap.getBitmap(), 0, 0, bitmap.getBitmap().getWidth(), bitmap.getBitmap().getHeight(), matrix, true);
 
@@ -411,7 +442,7 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
         try {
 
             if (mCameraPreview != null) {
-                mCameraPreview.stopVideo();
+                mCameraPreview.stopCamera();
                 camera_relatice.removeView(mCameraPreview);
                 mCameraPreview = null;
             }
@@ -421,8 +452,9 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
             if (FRONT_CAMERA == cameraMode) {
                 try {
                     camera = openFrontFacingCamera();
-                }catch (Exception e){
-                    camera =Camera.open();;
+                } catch (Exception e) {
+                    camera = Camera.open();
+                    ;
                 }
             }
 
@@ -520,15 +552,19 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
 
     }
 
+    static boolean willSendForClosing=true;
     @Override
     protected void onDestroy() {
         cameraActivity = null;
         super.onDestroy();
-
-        if (mCameraPreview != null) {
-            mCameraPreview.onStop();
-
+        if (mCameraPreview != null&&(!isOpenGalery)&&willSendForClosing) {
+            mCameraPreview.sendGoBack();
+            mCameraPreview.finish();
         }
+//        if (mCameraPreview != null) {
+//            mCameraPreview.onStop();
+//
+//        }
 
 
         try {
@@ -571,6 +607,8 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
     @Override
     protected void onResume() {
         super.onResume();
+        isOpenGalery=false;
+        willSendForClosing=true;
         if (mCameraPreview != null && mCamera != null) {
 
             getCameraInstance(curentCameraMode);
@@ -593,9 +631,10 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
 
     }
 
+    boolean isOpenGalery=false;
     private void openImagesGalery() {
         mCamera.setPreviewCallbackWithBuffer(null);
-
+        isOpenGalery=true;
         int OPEN_GALLERY = 1;
         Intent intent;// = new Intent();
 //        intent.setType("image/*");
@@ -683,13 +722,10 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
         super.onStop();
         try {
             turnOffScreen();
-        }catch (Exception e){
+        } catch (Exception e) {
 
         }
-        if (mCameraPreview != null){
-            mCameraPreview.sendGoBack();
-            mCameraPreview.finish();
-        }
+
     }
 
 
@@ -707,6 +743,7 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
         client.connect();
 
     }
+
 
     private GoogleApiClient client;
 
@@ -823,6 +860,29 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
                 break;
         }
 
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+
+        if ((keyCode == KeyEvent.KEYCODE_HOME)) {
+            finish();
+            goToMenu();
+            return true;
+        }
+//        if ((keyCode == KeyEvent.KEYCODE_APP_SWITCH)) {
+//            finish();
+//
+//        }
+//        Toast.makeText(CameraActivity.this, "keyCode ="+keyCode+"\nKEYCODE_APP_SWITCH"+KeyEvent.KEYCODE_APP_SWITCH, Toast.LENGTH_SHORT).show();
+
+        return super.onKeyDown(keyCode, event);
+    }
+    public void onUserLeaveHint() { // this only executes when Home is selected.
+        // do stuff
+        super.onUserLeaveHint();
+        if(!isOpenGalery)
+        finish();
     }
 }
 

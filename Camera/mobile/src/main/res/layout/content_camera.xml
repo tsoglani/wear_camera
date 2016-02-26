@@ -42,4 +42,13 @@
         android:layout_alignParentTop="true"
         android:layout_alignParentRight="true"
         android:layout_alignParentEnd="true" />
+
+    <Button
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:background="@drawable/video"
+        android:id="@+id/cam_to_video"
+        android:layout_alignParentTop="true"
+        android:layout_alignLeft="@+id/capture"
+        android:layout_alignStart="@+id/capture" />
 </RelativeLayout>

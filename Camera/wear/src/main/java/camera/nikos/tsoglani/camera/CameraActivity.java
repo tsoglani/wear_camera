@@ -1,39 +1,30 @@
 package camera.nikos.tsoglani.camera;
-
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.app.Activity;
 import android.support.wearable.view.WatchViewStub;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
-
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.wearable.Asset;
-import com.google.android.gms.wearable.Channel;
-import com.google.android.gms.wearable.ChannelApi;
 import com.google.android.gms.wearable.MessageApi;
 import com.google.android.gms.wearable.Node;
 import com.google.android.gms.wearable.NodeApi;
 import com.google.android.gms.wearable.Wearable;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-public class CameraActivity extends Activity implements  GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
+
+public class CameraActivity extends Activity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
     static RelativeLayout cameraView;
-    private Button switchCamera, capture, flash;
+    private Button switchCamera, capture, flash,video;
     private boolean isFlashUsed = false;
-static CameraActivity cameraActivity;
+    private Resources.Theme defaultTheme;
+    static CameraActivity cameraActivity;
+boolean isTakingVIdeo;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -42,9 +33,11 @@ static CameraActivity cameraActivity;
         stub.setOnLayoutInflatedListener(new WatchViewStub.OnLayoutInflatedListener() {
             @Override
             public void onLayoutInflated(WatchViewStub stub) {
-                cameraActivity=CameraActivity.this;
+                cameraActivity = CameraActivity.this;
+                defaultTheme = getTheme();
                 cameraView = (RelativeLayout) stub.findViewById(R.id.cameraView);
                 switchCamera = (Button) findViewById(R.id.switchCamera);
+                video=(Button)findViewById(R.id.video);
                 flash = (Button) findViewById(R.id.flash);
                 capture = (Button) findViewById(R.id.capture);
                 switchCamera.setOnClickListener(new View.OnClickListener() {
@@ -53,6 +46,21 @@ static CameraActivity cameraActivity;
                         sendMessage("/cameraview", "SwitchCamera".getBytes());
 
 
+                    }
+                });
+
+                video.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        isTakingVIdeo=!isTakingVIdeo;
+
+                        if(isTakingVIdeo){
+                            sendMessage("/cameraview","StartCaptureVideo".getBytes());
+                            video.setBackgroundResource(R.drawable.stop);
+                        }else{
+                            sendMessage("/cameraview","StopCaptureVideo".getBytes());
+                            video.setBackgroundResource(R.drawable.video);
+                        }
                     }
                 });
                 capture.setOnClickListener(new View.OnClickListener() {
@@ -85,17 +93,26 @@ static CameraActivity cameraActivity;
                     public boolean onTouch(View v, MotionEvent event) {
                         int action = event.getAction();
 
-
-                        if (event.getPointerCount() ==2) {
+                        Resources.Theme theme=getTheme();
+                        if (event.getPointerCount() == 2) {
                             // handle multi-touch events
                             if (action == MotionEvent.ACTION_POINTER_DOWN) {
                                 mDist = getFingerSpacing(event);
                             } else if (action == MotionEvent.ACTION_MOVE) {
                                 handleZoom(event);
                             }
+//                            getWindow().setType(android.R.attr.windowSwipeToDismiss);
+                            //windowSwipeToDismiss  getWindow().setType(android.R.attr.windowSwipeToDismiss);
+//                            setTheme(R.style.AppTheme);
+//                            setContentView(R.layout.activity_camera);
 
+                        } else {
+//                            setTheme(R.style.Theme_Wearable);
+//                            setContentView(R.layout.activity_camera);
+                            return false;
                         }
                         return true;
+
                     }
                 });
                 new Thread() {
@@ -136,6 +153,8 @@ static CameraActivity cameraActivity;
 
     }
 
+
+
     public void createMessageConnection() {
         messageClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
@@ -162,6 +181,13 @@ static CameraActivity cameraActivity;
             }
         });
     }
+   static boolean willSendForClosing=true;
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        willSendForClosing=true;
+    }
 
     private void sendMessage(final String message, final byte[] payload) {
 
@@ -179,7 +205,7 @@ static CameraActivity cameraActivity;
                         @Override
                         public void onResult(MessageApi.SendMessageResult sendMessageResult) {
                             if (sendMessageResult.getStatus().isSuccess()) {
-                                if (new String(payload).equals("close_connection")) {
+                                if (new String(payload).equals("main")) {
                                     closeDataConnection();
                                     closeMessageConnection();
                                 }
@@ -198,7 +224,8 @@ static CameraActivity cameraActivity;
     @Override
     public void onStop() {
         super.onStop();
-        sendMessage("/close_application", "close_application".getBytes());
+        if(willSendForClosing)
+        sendMessage("/close_application", "main".getBytes());
 //        closeDataConnection();
 
     }
@@ -228,7 +255,6 @@ static CameraActivity cameraActivity;
 //            Wearable.DataApi.addListener(channelClient, this);
 
     }
-
 
 
     @Override

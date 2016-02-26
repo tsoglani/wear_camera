@@ -34,6 +34,8 @@ public class MobileService extends WearableListenerService {
 
         if (message.equals("start")) {
             unlockTheScreen();
+            CameraActivity.cameraActivity.willSendForClosing=false;
+
             if (CameraActivity.cameraActivity != null) {// not tested .. is for restart when the application in mobile is already open ( rare )
                 Intent startMain = new Intent(Intent.ACTION_MAIN);
                 startMain.addCategory(Intent.CATEGORY_HOME);
@@ -57,6 +59,17 @@ public class MobileService extends WearableListenerService {
 
 
 
+        }   if (message.equals("main")) {
+            unlockTheScreen();
+CameraActivity.cameraActivity.willSendForClosing=false;
+            Intent intent = new Intent(this, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+            startActivity(intent);
+
+
+
         } else if (message.equals("OpenFrontCamera")) {
             CameraActivity.cameraActivity.runOnUiThread(new Thread() {
                 @Override
@@ -69,6 +82,20 @@ public class MobileService extends WearableListenerService {
                 @Override
                 public void run() {
                     CameraActivity.cameraActivity.getCameraInstance(CameraActivity.BACK_CAMERA);
+                }
+            });
+        } else if (message.equals("StopCaptureVideo")) {
+            CameraActivity.cameraActivity.runOnUiThread(new Thread() {
+                @Override
+                public void run() {
+                    CameraActivity.cameraActivity.stopCaptureVideo();
+                }
+            });
+        }  else if (message.equals("StartCaptureVideo")) {
+            CameraActivity.cameraActivity.runOnUiThread(new Thread() {
+                @Override
+                public void run() {
+                    CameraActivity.cameraActivity.startCaptureVideo();
                 }
             });
         } else if (message.equals("Capture")) {
@@ -93,7 +120,6 @@ public class MobileService extends WearableListenerService {
                 }
             });
         } else if (message.equals("close_connection") || message.equals("close_application")) {
-            Toast.makeText(MobileService.this, "close_connection", Toast.LENGTH_SHORT).show();
             Intent startMain = new Intent(Intent.ACTION_MAIN);
             startMain.addCategory(Intent.CATEGORY_HOME);
             startMain.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

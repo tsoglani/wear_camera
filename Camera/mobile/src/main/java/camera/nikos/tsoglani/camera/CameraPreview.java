@@ -8,9 +8,13 @@ import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
+import android.media.CamcorderProfile;
+import android.media.MediaRecorder;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.Toast;
@@ -22,14 +26,14 @@ import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.Channel;
 import com.google.android.gms.wearable.ChannelApi;
-import com.google.android.gms.wearable.DataMap;
 import com.google.android.gms.wearable.Node;
 import com.google.android.gms.wearable.NodeApi;
-import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.Wearable;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -117,7 +121,7 @@ public class CameraPreview extends SurfaceView implements
     public void handleFocus(MotionEvent event, Camera.Parameters params) {
         int pointerId = event.getPointerId(0);
         int pointerIndex = event.findPointerIndex(pointerId);
-        // Get the pointer's current position
+        // Get the pointer's current pos50dpition
         float x = event.getX(pointerIndex);
         float y = event.getY(pointerIndex);
 
@@ -144,16 +148,73 @@ public class CameraPreview extends SurfaceView implements
         return (float) Math.sqrt(x * x + y * y);
     }
 
+    MediaRecorder mMediaRecorder;
+
+    private boolean initRecorder(Surface surface) throws IOException {
+
+        mMediaRecorder = new MediaRecorder();
+
+        mCamera.unlock();
+        mMediaRecorder.setCamera(mCamera);
+        mMediaRecorder.setPreviewDisplay(surface);
+        mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
+        mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+
+        mMediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_480P));
+
+        mMediaRecorder.setOutputFile(initFile().getPath());
+        mMediaRecorder.setMaxDuration(600000); //set maximum duration 60 sec.
+        mMediaRecorder.setMaxFileSize(50000000); //set maximum file size 50M
+
+        try {
+            mMediaRecorder.prepare();
+        } catch (IllegalStateException e) {
+            e.printStackTrace();
+            return false;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
+    private File initFile() {
+        // File dir = new
+        // File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
+        // this
+        File file;
+        File dir = new File(Environment.getExternalStorageDirectory(), this
+                .getClass().getPackage().getName());
+
+
+        if (!dir.exists() && !dir.mkdirs()) {
+
+            Toast.makeText(getContext(), "not record", Toast.LENGTH_SHORT);
+            file = null;
+        } else {
+            file = new File(dir.getAbsolutePath(), new SimpleDateFormat(
+                    "'IMG_'yyyyMMddHHmmss'.mp4'").format(new Date()));
+        }
+        return file;
+    }
+
+
     @Override
     public void surfaceCreated(SurfaceHolder surfaceHolder) {
         try {
             if (mCamera != null) {
-                mCamera.setPreviewDisplay(surfaceHolder);
+                if (!CameraActivity.cameraActivity.isVideoMode) {
+                    mCamera.setPreviewDisplay(surfaceHolder);
+                } else {
+
+                    if (initRecorder(surfaceHolder.getSurface()))
+                        mMediaRecorder.start();
+                }
 
                 startVideo();
 
-
-                mCamera.startPreview();
+                if (!CameraActivity.cameraActivity.isVideoMode)
+                    mCamera.startPreview();
             }
         } catch (Exception e) {
             // left blank for now
@@ -167,9 +228,22 @@ public class CameraPreview extends SurfaceView implements
                                int width, int height) {
         // start preview with new settings
         try {
-            mCamera.setPreviewDisplay(surfaceHolder);
+            if (!CameraActivity.cameraActivity.isVideoMode) {
+                mCamera.setPreviewDisplay(surfaceHolder);
+            }
+//            else {
+//                mMediaRecorder.reset();
+//                mMediaRecorder.release();
+//                mCamera.release();
+//
+//                // once the objects have been released they can't be reused
+//                mMediaRecorder = null;
+//                mCamera = null;
+//            }
             startVideo();
-            mCamera.startPreview();
+            if (!CameraActivity.cameraActivity.isVideoMode)
+
+                mCamera.startPreview();
         } catch (Exception e) {
             // intentionally left blank for a test
         }
@@ -354,8 +428,7 @@ public class CameraPreview extends SurfaceView implements
 //                }
 
 
-
-                if (threads[0] != null){// && threads[1] != null && threads[2] != null ) {
+                if (threads[0] != null) {// && threads[1] != null && threads[2] != null ) {
                     return;
                 }
 
@@ -366,7 +439,11 @@ public class CameraPreview extends SurfaceView implements
                 if (ca.rotationMode == ca.LANDSHAPE_REVERSE) {
                     rotation = (-180);
                 } else if (ca.rotationMode == ca.POIRTRAIT) {
-                    rotation = (-90);
+                    if (CameraActivity.BACK_CAMERA == CameraActivity.cameraActivity.curentCameraMode) {
+                        rotation = (90);
+                    } else
+                        rotation = (-90);
+
                 }
 
                 if (threads[0] == null) {
@@ -400,12 +477,12 @@ public class CameraPreview extends SurfaceView implements
                                         matrix.postRotate(rotation);
 
                                         Bitmap rotatedBitmap = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), matrix, true);
-                                        int sizeW=400,sizeH=400;
-                                    Bitmap sendedBitmap=    getResizedBitmap(rotatedBitmap,sizeW,sizeH);
+                                        int sizeW = 400, sizeH = 400;
+                                        Bitmap sendedBitmap = getResizedBitmap(rotatedBitmap, sizeW, sizeH);
                                         ByteArrayOutputStream stream = new ByteArrayOutputStream();
                                         sendedBitmap.compress(Bitmap.CompressFormat.JPEG, 30, stream);
                                         byte[] byteArray = stream.toByteArray();
-                                     sendImage("/image w="+sizeW+",h="+sizeH,byteArray);
+                                        sendImage("/image w=" + sizeW + ",h=" + sizeH, byteArray);
                                         try {
                                             camera.addCallbackBuffer(data);
                                         } catch (Exception e) {
@@ -417,7 +494,6 @@ public class CameraPreview extends SurfaceView implements
                                         e.printStackTrace();
                                     }
                                 }
-
 
 
                             } catch (OutOfMemoryError e) {
@@ -552,8 +628,20 @@ public class CameraPreview extends SurfaceView implements
     public Bitmap getResizedBitmap(Bitmap image, int bitmapWidth, int bitmapHeight) {
         return Bitmap.createScaledBitmap(image, bitmapWidth, bitmapHeight, true);
     }
+    void stopVideo(){
+if(mMediaRecorder!=null) {
+    mMediaRecorder.reset();
+    mMediaRecorder.release();
 
-    void stopVideo() {
+    // once the objects have been released they can't be reused
+    mMediaRecorder = null;
+//    mCamera = null;
+    refreshCamera(mCamera);
+
+
+}
+    }
+    void stopCamera() {
         if (null == mCamera)
             return;
         try {
@@ -568,7 +656,7 @@ public class CameraPreview extends SurfaceView implements
     }
 
     public void finish() {
-        stopVideo();
+        stopCamera();
 
     }
 
@@ -617,27 +705,28 @@ public class CameraPreview extends SurfaceView implements
         return Asset.createFromBytes(byteStream.toByteArray());
     }
 
-    protected void onStop() {
-        Bitmap.Config conf = Bitmap.Config.ARGB_8888;
-        Bitmap bmp = Bitmap.createBitmap(100, 100, conf);
-        Asset asset = createAssetFromBitmap(bmp);
-        PutDataMapRequest request = PutDataMapRequest.create("/close");
-        DataMap map = request.getDataMap();
-        map.putLong("time", new Date().getTime()); // MOST IMPORTANT LINE FOR TIMESTAMP
-        map.putAsset("profileImage", asset);
-        if (dataClient == null) {
-            createDataGoogleApiConnection();
-        }
-        if (dataClient != null) {
-            Wearable.DataApi.putDataItem(dataClient, request.asPutDataRequest());
-
-        }
-    }
+//    protected void onStop() {
+//        Bitmap.Config conf = Bitmap.Config.ARGB_8888;
+//        Bitmap bmp = Bitmap.createBitmap(100, 100, conf);
+//        Asset asset = createAssetFromBitmap(bmp);
+//        PutDataMapRequest request = PutDataMapRequest.create("/close");
+//        DataMap map = request.getDataMap();
+//        map.putLong("time", new Date().getTime()); // MOST IMPORTANT LINE FOR TIMESTAMP
+//        map.putAsset("profileImage", asset);
+//        if (dataClient == null) {
+//            createDataGoogleApiConnection();
+//        }
+//        if (dataClient != null) {
+//            Wearable.DataApi.putDataItem(dataClient, request.asPutDataRequest());
+//
+//        }
+//    }
 
 
     private void sendImage(final String path, final byte[] data) {
         if (dataClient == null) {
-            createDataGoogleApiConnection();;
+            createDataGoogleApiConnection();
+            ;
         }
 
         Wearable.NodeApi.getConnectedNodes(dataClient).setResultCallback(new ResultCallback<NodeApi.GetConnectedNodesResult>() {
@@ -666,7 +755,8 @@ public class CameraPreview extends SurfaceView implements
             }
         });
     }
-    public void sendGoBack(){
+
+    public void sendGoBack() {
         Bitmap.Config conf = Bitmap.Config.ARGB_8888;
         Bitmap bmp = Bitmap.createBitmap(100, 100, conf);
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
