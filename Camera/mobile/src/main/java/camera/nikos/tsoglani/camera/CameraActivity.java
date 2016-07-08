@@ -440,7 +440,7 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
 
         Camera camera = null;
         try {
-
+            isVideoMode=false;
             if (mCameraPreview != null) {
                 mCameraPreview.stopCamera();
                 camera_relatice.removeView(mCameraPreview);
@@ -454,7 +454,7 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
                     camera = openFrontFacingCamera();
                 } catch (Exception e) {
                     camera = Camera.open();
-                    ;
+
                 }
             }
 
