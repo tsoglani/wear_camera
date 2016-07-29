@@ -7,6 +7,7 @@ import android.support.wearable.view.WatchViewStub;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -23,7 +24,7 @@ import java.util.List;
 public class MainActivity extends Activity implements MessageApi.MessageListener, GoogleApiClient.ConnectionCallbacks {
 
     private Button camerButton;
-
+private FrameLayout frameLayout;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -36,6 +37,9 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
                 if(CameraActivity.cameraActivity==null||CameraActivity.cameraActivity.willSendForClosing)
                 sendMessage("/main", "main".getBytes());
                 camerButton = (Button) stub.findViewById(R.id.openCamera);
+                frameLayout = (FrameLayout) stub.findViewById(R.id.frameLayout);
+                frameLayout.setBackgroundColor(getResources().getColor(R.color.YellowGreen));
+                camerButton.setBackgroundResource(R.drawable.ic3);
                 camerButton.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {

@@ -398,9 +398,12 @@ public class CameraActivity extends Activity implements ConnectionCallbacks, Mes
     }
 
     public static void createDataConnection() {
+        try{
         channelClient = new Builder(cameraActivity).addConnectionCallbacks(cameraActivity).addOnConnectionFailedListener(new C03844()).addApi(Wearable.API).build();
         channelClient.connect();
-    }
+    }catch (Exception e){
+            e.printStackTrace();
+        }}
 
     public void createMessageConnection() {
         this.messageClient = new Builder(this).addConnectionCallbacks(this).addOnConnectionFailedListener(new C03855()).addApi(Wearable.API).build();

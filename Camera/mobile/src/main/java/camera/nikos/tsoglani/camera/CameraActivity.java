@@ -159,6 +159,7 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
                 isVideoMode = true;
                 getCameraInstance(curentCameraMode);
                 videoCapture.setBackgroundResource(R.drawable.stop);
+//                Toast.makeText(CameraActivity.this, "stop", Toast.LENGTH_SHORT).show();
                 switch_camera.setVisibility(View.INVISIBLE);
                capture.setVisibility(View.INVISIBLE);
                 open_galery.setVisibility(View.INVISIBLE);
@@ -177,6 +178,7 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
 
 
                 videoCapture.setBackgroundResource(R.drawable.video);
+//                Toast.makeText(CameraActivity.this, "video", Toast.LENGTH_SHORT).show();
                 isVideoMode = false;
                 switch_camera.setVisibility(View.VISIBLE);
                 capture.setVisibility(View.VISIBLE);
@@ -894,7 +896,8 @@ e.printStackTrace();
                                     if(message.equals("/camera")){
                                         client=null;
                                     }if(new String(payload).equals("exit")){
-                                        client.disconnect();
+//                                        if(client!=null)
+//                                        client.disconnect();
                                         client=null;
                                     }
                                 } else {

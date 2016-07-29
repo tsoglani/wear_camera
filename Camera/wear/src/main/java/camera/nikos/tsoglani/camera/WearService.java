@@ -82,7 +82,7 @@ String path =channel.getPath();
                             CameraActivity.cameraView.setBackground(new BitmapDrawable(bitmap));}
 //                    }
                 });
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
 //                channel.receiveFile(channelClient, Uri.fromFile(file), false);
