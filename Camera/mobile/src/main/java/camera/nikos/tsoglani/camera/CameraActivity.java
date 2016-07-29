@@ -1,5 +1,7 @@
 package camera.nikos.tsoglani.camera;
 
+import android.*;
+import android.Manifest;
 import android.annotation.TargetApi;
 import android.content.ContentValues;
 import android.content.Context;
@@ -17,7 +19,9 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.PowerManager;
 import android.provider.MediaStore;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.test.mock.MockPackageManager;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -39,6 +43,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -493,93 +498,181 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
 
     Camera getCameraInstance(int cameraMode) {
 
-        Intent startMain;
-        Exception e;
-        Error error;
         Camera camera = null;
-        if (this.mCameraPreview != null) {
-            this.mCameraPreview.stopCamera();
-            this.camera_relatice.removeView(this.mCameraPreview);
-            this.mCameraPreview = null;
+try {
+
+    if (this.mCameraPreview != null) {
+        this.mCameraPreview.stopCamera();
+        this.camera_relatice.removeView(this.mCameraPreview);
+        this.mCameraPreview = null;
+    }
+    if (BACK_CAMERA == cameraMode) {
+        try {
+            camera = Camera.open();
+        } catch (Exception e2) {
+            camera = null;
         }
-        if (BACK_CAMERA == cameraMode) {
+        if (camera == null) {
+            camera = openFrontFacingCamera();
+        }
+        if (camera == null && camera == null) {
             try {
-                camera = Camera.open();
-            } catch (Exception e2) {
-                camera = null;
-            }
-            if (camera == null) {
-                camera = openFrontFacingCamera();
-            }
-            if (camera == null && camera == null) {
+                camera = Camera.open(0);
+                if (camera == null) {
+                    throw new Exception();
+                }
+            } catch (Throwable e3) {
+                e3.printStackTrace();
                 try {
-                    camera = Camera.open(0);
-                    if (camera == null) {
-                        throw new Exception();
-                    }
-                } catch (Throwable e3) {
-                    e3.printStackTrace();
-                    try {
 
-                        if (cameraMode == 0) {
+                    if (cameraMode == 0) {
+                        try {
+                            camera = openFrontFacingCamera();
+                        } catch (Exception e4) {
+                            e4.printStackTrace();
+                        }
+                        if (camera == null) {
                             try {
-                                camera = openFrontFacingCamera();
-                            } catch (Exception e4) {
-                                e4.printStackTrace();
-                            }
-                            if (camera == null) {
-                                try {
-                                    camera = Camera.open();
-                                } catch (Exception e5) {
-                                    camera = null;
-                                }
-                            }
-                            if (camera == null) {
-                                try {
-                                    camera = Camera.open(0);
-
-                                } catch (Exception|Error e6) {
-                     e6.printStackTrace();
-                                    this.mCamera = camera;
-                                    this.mCamera.setDisplayOrientation(90);
-                                    this.mCameraPreview = new CameraPreview(this, this.mCamera);
-                                    this.curentCameraMode = cameraMode;
-                                    this.camera_relatice.addView(this.mCameraPreview, 0);
-                                    return camera;
-                                }
+                                camera = Camera.open();
+                            } catch (Exception e5) {
+                                camera = null;
                             }
                         }
-                        this.mCamera = camera;
-                        this.mCamera.setDisplayOrientation(90);
-                        this.mCameraPreview = new CameraPreview(this, this.mCamera);
-                        this.curentCameraMode = cameraMode;
-                        this.camera_relatice.addView(this.mCameraPreview, 0);
-                    } catch (Exception e42) {
-                        e42.printStackTrace();
-                    }
-                    return camera;
-                }
-            }
-        }
-        if (cameraMode == FRONT_CAMERA) {
-            camera = openFrontFacingCamera();
-            if (camera == null) {
-                camera = Camera.open();
-            }
-            if (camera == null) {
-                camera = Camera.open(0);
+                        if (camera == null) {
+                            try {
+                                camera = Camera.open(0);
 
+                            } catch (Exception | Error e6) {
+                                e6.printStackTrace();
+                                this.mCamera = camera;
+                                this.mCamera.setDisplayOrientation(90);
+                                this.mCameraPreview = new CameraPreview(this, this.mCamera);
+                                this.curentCameraMode = cameraMode;
+                                this.camera_relatice.addView(this.mCameraPreview, 0);
+                                return camera;
+                            }
+                        }
+                    }
+                    this.mCamera = camera;
+                    this.mCamera.setDisplayOrientation(90);
+                    this.mCameraPreview = new CameraPreview(this, this.mCamera);
+                    this.curentCameraMode = cameraMode;
+                    this.camera_relatice.addView(this.mCameraPreview, 0);
+                } catch (Exception e42) {
+                    e42.printStackTrace();
+                }
+                return camera;
             }
         }
-        this.mCamera = camera;
-        this.mCamera.setDisplayOrientation(90);
-        this.mCameraPreview = new CameraPreview(this, this.mCamera);
-        this.curentCameraMode = cameraMode;
-        this.camera_relatice.addView(this.mCameraPreview, 0);
+    }
+    if (cameraMode == FRONT_CAMERA) {
+        camera = openFrontFacingCamera();
+        if (camera == null) {
+            camera = Camera.open();
+        }
+        if (camera == null) {
+            camera = Camera.open(0);
+
+        }
+    }
+    this.mCamera = camera;
+    this.mCamera.setDisplayOrientation(90);
+    this.mCameraPreview = new CameraPreview(this, this.mCamera);
+    this.curentCameraMode = cameraMode;
+    this.camera_relatice.addView(this.mCameraPreview, 0);
+    return camera;
+
+}catch (Exception ee){
+    ee.printStackTrace();
+
+
+    String[] mPermission = {android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            android.Manifest.permission.CAMERA,
+            android.Manifest.permission.RECORD_AUDIO,
+            android.Manifest.permission.READ_EXTERNAL_STORAGE,
+            };
+
+
+   permissionNeeded.clear();
+    try {
+
+        for (String s:mPermission) {
+            if (ActivityCompat.checkSelfPermission(this, s)
+                    != MockPackageManager.PERMISSION_GRANTED) {
+                permissionNeeded.add(s);
+            }
+        }
+//        if (ActivityCompat.checkSelfPermission(this, mPermission[0])
+//                != MockPackageManager.PERMISSION_GRANTED ||
+//                ActivityCompat.checkSelfPermission(this, mPermission[1])
+//                        != MockPackageManager.PERMISSION_GRANTED ||
+//                ActivityCompat.checkSelfPermission(this, mPermission[2])
+//                        != MockPackageManager.PERMISSION_GRANTED ||
+//                ActivityCompat.checkSelfPermission(this, mPermission[3])
+//                        != MockPackageManager.PERMISSION_GRANTED) {
+
+if(permissionNeeded.size()>0){
+    String []reqPer= permissionNeeded.toArray(new String[permissionNeeded.size()]);
+    ActivityCompat.requestPermissions(this,
+            reqPer, REQUEST_CODE_PERMISSION);
+}
+
+
+            // If any permission aboe not allowed by user, this condition will execute every tim, else your else part will work
+//        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+
+//    runOnUiThread(new Thread(){
+//        @Override
+//        public void run() {
+//            Toast.makeText(CameraActivity.this, "Enable all the required application's permissions first.", Toast.LENGTH_LONG).show();
+//        }
+//    });
+//    try {
+//        Thread.sleep(2000);
+//    } catch (InterruptedException e) {
+//        e.printStackTrace();
+//    }
+//    int pid = android.os.Process.myPid();
+//    android.os.Process.killProcess(pid);
+//System.exit(0);
+//    System.gc();
+}
         return camera;
     }
 
+    private ArrayList<String>permissionNeeded= new ArrayList<String>();
 
+    private static final int REQUEST_CODE_PERMISSION = 2;
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        Log.e("Req Code", "" + requestCode);
+        if (requestCode == REQUEST_CODE_PERMISSION) {
+            if (grantResults.length == permissionNeeded.size() ) {
+boolean isAllPermissionGranded=true;
+
+                for (int id:grantResults){
+                    if(id != MockPackageManager.PERMISSION_GRANTED){
+                        isAllPermissionGranded=false;break;
+                    }
+                }
+
+
+                // Success Stuff here
+                if(isAllPermissionGranded)
+                Toast.makeText(CameraActivity.this, "You just enable the permissions", Toast.LENGTH_SHORT).show();
+            }
+        }else{
+//                int pid = android.os.Process.myPid();
+//    android.os.Process.killProcess(pid);
+//System.exit(0);
+//    System.gc();
+        }
+
+    }
     private Camera openFrontFacingCamera() {
         int cameraCount = 0;
         Camera cam = null;
@@ -888,7 +981,7 @@ e.printStackTrace();
                     List<Node> nodes = getConnectedNodesResult.getNodes();
                     for (Node node : nodes) {
 
-
+if(client!=null)
                         Wearable.MessageApi.sendMessage(client, node.getId(), message, payload).setResultCallback(new ResultCallback<MessageApi.SendMessageResult>() {
                             @Override
                             public void onResult(MessageApi.SendMessageResult sendMessageResult) {
