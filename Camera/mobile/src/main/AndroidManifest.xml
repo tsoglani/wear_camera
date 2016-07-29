@@ -3,9 +3,9 @@
     package="camera.nikos.tsoglani.camera">
 
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:required= "true"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"  />
+    <uses-permission android:name="android.permission.CAMERA"   android:required= "true"/>
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <permission
@@ -13,10 +13,10 @@
         android:permissionGroup="android.permission-group.HARDWARE_CONTROLS"
         android:protectionLevel="normal" />
 
-    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.CAMERA" android:required= "true"/>
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.RECORD_VIDEO" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" android:required= "true"/>
+    <uses-permission android:name="android.permission.RECORD_VIDEO" android:required= "true" />
 
     <uses-feature android:name="android.hardware.camera" />
     <uses-feature android:name="android.hardware.camera.autofocus" />
@@ -25,6 +25,7 @@
         android:allowBackup="true"
         android:hardwareAccelerated="true"
         android:icon="@drawable/camera_app2"
+        android:name="android.support.multidex.MultiDexApplication"
         android:label="@string/app_name"
         android:largeHeap="true"
         android:screenOrientation="portrait"
@@ -50,6 +51,7 @@
                 <!--<action android:name="com.google.android.gms.wearable.BIND_LISTENER" />-->
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
                 <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <action android:name="com.google.android.gms.wearable.CAPABILITY_CHANGED" />
                 <action android:name="com.google.android.gms.wearable.CHANNEL_EVENT" />
                 <data android:scheme="wear" android:host="*"  />
             </intent-filter>

@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.wearable.view.WatchViewStub;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
@@ -82,12 +83,15 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
                     List<Node> nodes = getConnectedNodesResult.getNodes();
                     for (Node node : nodes) {
 
-
+if(client==null){
+    return;
+}
                         Wearable.MessageApi.sendMessage(client, node.getId(), message, payload).setResultCallback(new ResultCallback<MessageApi.SendMessageResult>() {
                             @Override
                             public void onResult(MessageApi.SendMessageResult sendMessageResult) {
                                 if (sendMessageResult.getStatus().isSuccess()) {
                                     if (new String(payload).equals("close_application")) {
+                                        if(client!=null)
                                         client.disconnect();
                                         client = null;
                                     }
@@ -118,11 +122,11 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
     private void goToCameraView() {
         Intent intent = new Intent(MainActivity.this, CameraActivity.class);
         startActivity(intent);
-        if (client != null) {
-            Wearable.MessageApi.removeListener(client, MainActivity.this);
-            client.disconnect();
-            client = null;
-        }
+//        if (client != null) {
+//            Wearable.MessageApi.removeListener(client, MainActivity.this);
+//            client.disconnect();
+//            client = null;
+//        }
     }
 
     @Override
@@ -151,8 +155,13 @@ public class MainActivity extends Activity implements MessageApi.MessageListener
         //Log.i(MobileService.class.getSimpleName(), "WEAR Message " + messageEvent.getPath());
 
         String message = new String(messageEvent.getData());
+        Log.e("message",message);
         if (message.equals("start")) {
             goToCameraView();
+        }else if(message.equals("exit")){
+            android.os.Process.killProcess(android.os.Process.myPid());
+            System.exit(0);
+            System.gc();
         }
     }
 }

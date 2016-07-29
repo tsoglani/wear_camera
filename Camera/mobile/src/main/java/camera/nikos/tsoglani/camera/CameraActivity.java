@@ -12,6 +12,7 @@ import android.hardware.Camera;
 import android.hardware.SensorManager;
 import android.media.ExifInterface;
 import android.media.MediaRecorder;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.PowerManager;
@@ -74,15 +75,34 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
         videoCapture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+         new AsyncTask<Void,Void,Void>(){
+             @Override
+             protected void onPreExecute() {
+                 super.onPreExecute();
+                 runOnUiThread(new Thread(){
+                     @Override
+                     public void run() {
+                         videoCapture.setVisibility(View.INVISIBLE);
+                     }
+                 });
+             }
 
-                mCameraPreview.refreshCamera(mCamera);
+             @Override
+             protected Void doInBackground(Void... voids) {
 
-                if (!isVideoMode) {
+                 if (!isVideoMode) {
 
-                    startCaptureVideo();
-                } else {
-                    stopCaptureVideo();
-                }
+                     startCaptureVideo();
+                 } else {
+
+                     stopCaptureVideo();
+                 }
+                 return null;
+             }
+         }.execute();
+
+
+
 //
             }
         });
@@ -132,15 +152,48 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
 
 
     void startCaptureVideo() {
-        isVideoMode = true;
-        getCameraInstance(curentCameraMode);
-        videoCapture.setBackgroundResource(R.drawable.stop);
+
+        runOnUiThread(new Thread(){
+            @Override
+            public void run() {
+                isVideoMode = true;
+                getCameraInstance(curentCameraMode);
+                videoCapture.setBackgroundResource(R.drawable.stop);
+                switch_camera.setVisibility(View.INVISIBLE);
+               capture.setVisibility(View.INVISIBLE);
+                open_galery.setVisibility(View.INVISIBLE);
+                flash.setVisibility(View.INVISIBLE);
+                videoCapture.setVisibility(View.VISIBLE);
+            }
+        });
+
+        sendMessage("/info","startCapturing".getBytes());
     }
 
     void stopCaptureVideo() {
-        videoCapture.setBackgroundResource(R.drawable.video);
+        runOnUiThread(new Thread(){
+            @Override
+            public void run() {
 
-        mCameraPreview.stopVideo();
+
+                videoCapture.setBackgroundResource(R.drawable.video);
+                isVideoMode = false;
+                switch_camera.setVisibility(View.VISIBLE);
+                capture.setVisibility(View.VISIBLE);
+                open_galery.setVisibility(View.VISIBLE);
+                flash.setVisibility(View.VISIBLE);
+                mCameraPreview.stopVideo();
+                if (mCameraPreview.mMediaRecorder!=null){
+                    mCameraPreview.mMediaRecorder.stop();
+                    mCameraPreview.mMediaRecorder.release();
+                    mCameraPreview=null;
+                }
+                videoCapture.setVisibility(View.VISIBLE);
+            }
+        });
+        sendMessage("/info","stopCapturing".getBytes());
+
+
     }
 
 
@@ -233,14 +286,14 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
 //    }
 
 
-    private void releaseMediaRecorder() {
-        if (mediaRecorder != null) {
-            mediaRecorder.reset(); // clear recorder configuration
-            mediaRecorder.release(); // release the recorder object
-            mediaRecorder = null;
-            mCamera.lock(); // lock camera for later use
-        }
-    }
+//    private void releaseMediaRecorder() {
+//        if (mediaRecorder != null) {
+//            mediaRecorder.reset(); // clear recorder configuration
+//            mediaRecorder.release(); // release the recorder object
+//            mediaRecorder = null;
+//            mCamera.lock(); // lock camera for later use
+//        }
+//    }
 
     Camera.PictureCallback picture = new Camera.PictureCallback() {
 
@@ -438,41 +491,89 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
 
     Camera getCameraInstance(int cameraMode) {
 
+        Intent startMain;
+        Exception e;
+        Error error;
         Camera camera = null;
-        try {
-            isVideoMode=false;
-            if (mCameraPreview != null) {
-                mCameraPreview.stopCamera();
-                camera_relatice.removeView(mCameraPreview);
-                mCameraPreview = null;
-            }
-            if (BACK_CAMERA == cameraMode) {
+        if (this.mCameraPreview != null) {
+            this.mCameraPreview.stopCamera();
+            this.camera_relatice.removeView(this.mCameraPreview);
+            this.mCameraPreview = null;
+        }
+        if (BACK_CAMERA == cameraMode) {
+            try {
                 camera = Camera.open();
+            } catch (Exception e2) {
+                camera = null;
             }
-            if (FRONT_CAMERA == cameraMode) {
+            if (camera == null) {
+                camera = openFrontFacingCamera();
+            }
+            if (camera == null && camera == null) {
                 try {
-                    camera = openFrontFacingCamera();
-                } catch (Exception e) {
-                    camera = Camera.open();
+                    camera = Camera.open(0);
+                    if (camera == null) {
+                        throw new Exception();
+                    }
+                } catch (Throwable e3) {
+                    e3.printStackTrace();
+                    try {
 
+                        if (cameraMode == 0) {
+                            try {
+                                camera = openFrontFacingCamera();
+                            } catch (Exception e4) {
+                                e4.printStackTrace();
+                            }
+                            if (camera == null) {
+                                try {
+                                    camera = Camera.open();
+                                } catch (Exception e5) {
+                                    camera = null;
+                                }
+                            }
+                            if (camera == null) {
+                                try {
+                                    camera = Camera.open(0);
+
+                                } catch (Exception|Error e6) {
+                     e6.printStackTrace();
+                                    this.mCamera = camera;
+                                    this.mCamera.setDisplayOrientation(90);
+                                    this.mCameraPreview = new CameraPreview(this, this.mCamera);
+                                    this.curentCameraMode = cameraMode;
+                                    this.camera_relatice.addView(this.mCameraPreview, 0);
+                                    return camera;
+                                }
+                            }
+                        }
+                        this.mCamera = camera;
+                        this.mCamera.setDisplayOrientation(90);
+                        this.mCameraPreview = new CameraPreview(this, this.mCamera);
+                        this.curentCameraMode = cameraMode;
+                        this.camera_relatice.addView(this.mCameraPreview, 0);
+                    } catch (Exception e42) {
+                        e42.printStackTrace();
+                    }
+                    return camera;
                 }
             }
-
-
-            mCamera = camera;
-            mCamera.setDisplayOrientation(90);
-            mCameraPreview = new CameraPreview(this, mCamera);
-
-
-            curentCameraMode = cameraMode;
-            camera_relatice.addView(mCameraPreview, 0);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(CameraActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
         }
-//        mTextureView.setLayoutParams(new ViewGroup.LayoutParams(500,500));
+        if (cameraMode == FRONT_CAMERA) {
+            camera = openFrontFacingCamera();
+            if (camera == null) {
+                camera = Camera.open();
+            }
+            if (camera == null) {
+                camera = Camera.open(0);
 
+            }
+        }
+        this.mCamera = camera;
+        this.mCamera.setDisplayOrientation(90);
+        this.mCameraPreview = new CameraPreview(this, this.mCamera);
+        this.curentCameraMode = cameraMode;
+        this.camera_relatice.addView(this.mCameraPreview, 0);
         return camera;
     }
 
@@ -555,7 +656,7 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
     static boolean willSendForClosing=true;
     @Override
     protected void onDestroy() {
-        cameraActivity = null;
+
         super.onDestroy();
         if (mCameraPreview != null&&(!isOpenGalery)&&willSendForClosing) {
             mCameraPreview.sendGoBack();
@@ -607,19 +708,21 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
     @Override
     protected void onResume() {
         super.onResume();
+        cameraActivity = this;
         isOpenGalery=false;
         willSendForClosing=true;
-        if (mCameraPreview != null && mCamera != null) {
-
+//        if (mCameraPreview != null && mCamera != null) {
+//if(mCamera==null)
             getCameraInstance(curentCameraMode);
 
-        }
+//        }
 //            mCameraPreview.refreshCamera(mCamera);
 
     }
 
     @Override
     public void onBackPressed() {
+        if(mCamera!=null)
         mCamera.setPreviewCallbackWithBuffer(null);
         finish();
         mCameraPreview.finish();
@@ -633,6 +736,7 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
 
     boolean isOpenGalery=false;
     private void openImagesGalery() {
+        if(mCamera!=null)
         mCamera.setPreviewCallbackWithBuffer(null);
         isOpenGalery=true;
         int OPEN_GALLERY = 1;
@@ -721,13 +825,36 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
     protected void onStop() {
         super.onStop();
         try {
+            sendMessage("/info","exit".getBytes());
             turnOffScreen();
         } catch (Exception e) {
-
+e.printStackTrace();
         }
 
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        try {
+            cameraActivity = null;
+            if (mCamera != null) {
+                mCamera.stopPreview();
+//            if(mCamera.)
+//            mCamera.unlock();
+                mCamera.release();
+
+                mCamera = null;
+            }
+            if (mCameraPreview != null) {
+                mCameraPreview.finish();
+                mCameraPreview.destroy();
+
+            }
+        }catch (RuntimeException e){
+
+        }
+    }
 
     public void onReadyForContent() {
         client = new GoogleApiClient.Builder(this)
@@ -748,6 +875,7 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
     private GoogleApiClient client;
 
     private void sendMessage(final String message, final byte[] payload) {
+
         if (client == null || !client.isConnected()) {
             onReadyForContent();
         }
@@ -763,7 +891,12 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
                             @Override
                             public void onResult(MessageApi.SendMessageResult sendMessageResult) {
                                 if (sendMessageResult.getStatus().isSuccess()) {
-
+                                    if(message.equals("/camera")){
+                                        client=null;
+                                    }if(new String(payload).equals("exit")){
+                                        client.disconnect();
+                                        client=null;
+                                    }
                                 } else {
                                     client = null;
                                     Toast.makeText(CameraActivity.this, "Not connected", Toast.LENGTH_SHORT).show();
@@ -882,7 +1015,6 @@ public class CameraActivity extends AppCompatActivity implements OrientationMana
         // do stuff
         super.onUserLeaveHint();
         if(!isOpenGalery)
-        finish();
+            finish();
     }
 }
-

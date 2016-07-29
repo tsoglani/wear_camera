@@ -1,402 +1,480 @@
 package camera.nikos.tsoglani.camera;
-import android.content.res.Resources;
-import android.os.Bundle;
+
 import android.app.Activity;
+import android.content.res.Resources.Theme;
+import android.graphics.PointF;
+import android.os.Bundle;
 import android.support.wearable.view.WatchViewStub;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.View.OnTouchListener;
 import android.widget.Button;
 import android.widget.RelativeLayout;
-import android.widget.Toast;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.GoogleApiClient.Builder;
+import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
+import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.wearable.MessageApi;
+import com.google.android.gms.wearable.MessageApi.SendMessageResult;
+import com.google.android.gms.wearable.MessageEvent;
 import com.google.android.gms.wearable.Node;
-import com.google.android.gms.wearable.NodeApi;
+import com.google.android.gms.wearable.NodeApi.GetConnectedNodesResult;
 import com.google.android.gms.wearable.Wearable;
-import java.util.List;
 
-
-public class CameraActivity extends Activity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
-    static RelativeLayout cameraView;
-    private Button switchCamera, capture, flash,video;
-    private boolean isFlashUsed = false;
-    private Resources.Theme defaultTheme;
+public class CameraActivity extends Activity implements ConnectionCallbacks, MessageApi.MessageListener {
     static CameraActivity cameraActivity;
-boolean isTakingVIdeo;
+    static RelativeLayout cameraView;
+    static GoogleApiClient channelClient;
+    static boolean willSendForClosing;
+    private Button capture;
+    private Theme defaultTheme;
+    private Button flash;
+    private boolean isFlashUsed;
+    boolean isTakingVIdeo;
+    private static String lastVieoCommand;
+    private GoogleApiClient messageClient;
+    private PointF previousZoomPoint;
+    private Button switchCamera;
+    private Button video;
+    int zoom;
+    private GoogleApiClient client;
+
+
     @Override
+    public void onMessageReceived(MessageEvent messageEvent) {
+        String message = new String(messageEvent.getData());
+
+        Log.e("info",message);
+
+        if(message.equals("startCapturing")){
+            runOnUiThread(new startCaptureVideoThread());
+        }else if(message.equals("stopCapturing")){
+            runOnUiThread(new stopCaptureVideoThread());
+        }else if(message.equals("exit")){
+            android.os.Process.killProcess(android.os.Process.myPid());
+            System.exit(0);
+            System.gc();
+        }
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        cameraActivity=this;
+    }
+
+    /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.2 */
+    class stopCaptureVideoThread extends Thread {
+        stopCaptureVideoThread() {
+        }
+
+        public void run() {
+            try {
+                CameraActivity.this.video.setBackgroundResource(R.drawable.video);
+                CameraActivity.this.capture.setVisibility(View.VISIBLE);
+                CameraActivity.this.flash.setVisibility(View.VISIBLE);
+                CameraActivity.this.switchCamera.setVisibility(View.VISIBLE);
+            } catch (Exception e) {
+                CameraActivity.this.toast("Error" + e.getMessage());
+            }
+        }
+    }
+
+
+    /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.3 */
+    class startCaptureVideoThread extends Thread {
+        startCaptureVideoThread() {
+        }
+
+        public void run() {
+            try {
+                CameraActivity.this.video.setBackgroundResource(R.drawable.stop);
+                CameraActivity.this.capture.setVisibility(View.INVISIBLE);
+                CameraActivity.this.flash.setVisibility(View.INVISIBLE);
+                CameraActivity.this.switchCamera.setVisibility(View.INVISIBLE);
+            } catch (Exception e) {
+                CameraActivity.this.toast("Error" + e.getMessage());
+            }
+        }
+    }
+
+    public void onReadyForContent() {
+        client = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
+
+                .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
+                    @Override
+                    public void onConnectionFailed(ConnectionResult result) {
+                        toast("Connection Faild");
+
+                    }
+                })
+                .addApi(Wearable.API)
+                .build();
+
+        client.connect();
+
+    }    /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.6 */
+    class C02236 extends Thread {
+        final /* synthetic */ String val$s;
+
+        C02236(String str) {
+            this.val$s = str;
+        }
+
+        /* JADX WARNING: inconsistent code. */
+        /* Code decompiled incorrectly, please refer to instructions dump. */
+        public void run() {
+            /*
+            r4 = this;
+            r1 = camera.nikos.tsoglani.camera.CameraActivity.this;	 Catch:{ Exception -> 0x000d, Error -> 0x0018 }
+            r2 = r4.val$s;	 Catch:{ Exception -> 0x000d, Error -> 0x0018 }
+            r3 = 0;
+            r1 = android.widget.Toast.makeText(r1, r2, r3);	 Catch:{ Exception -> 0x000d, Error -> 0x0018 }
+            r1.show();	 Catch:{ Exception -> 0x000d, Error -> 0x0018 }
+        L_0x000c:
+            return;
+        L_0x000d:
+            r0 = move-exception;
+        L_0x000e:
+            r1 = "Error CameraActToast";
+            r2 = r0.getMessage();
+            android.util.Log.e(r1, r2);
+            goto L_0x000c;
+        L_0x0018:
+            r0 = move-exception;
+            goto L_0x000e;
+            */
+//            throw new UnsupportedOperationException("Method not decompiled: camera.nikos.tsoglani.camera.CameraActivity.6.run():void");
+        }
+    }
+
+    /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.7 */
+    class C02247 extends Thread {
+        final /* synthetic */ String val$message;
+        final /* synthetic */ byte[] val$payload;
+
+        /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.7.1 */
+        class C03871 implements ResultCallback<GetConnectedNodesResult> {
+
+            /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.7.1.1 */
+            class C03861 implements ResultCallback<SendMessageResult> {
+                C03861() {
+                }
+
+                public void onResult(SendMessageResult sendMessageResult) {
+                    if (!sendMessageResult.getStatus().isSuccess()) {
+                        CameraActivity.this.toast("Not connected with phone device");
+                    } else if (new String(C02247.this.val$payload).equals("main")) {
+                        CameraActivity.this.closeDataConnection();
+                        CameraActivity.this.closeMessageConnection();
+                    } else if (new String(C02247.this.val$payload).equals("StartCaptureVideo")) {
+                        CameraActivity.this.startVideoReceivedFunction();
+                        CameraActivity.this.lastVieoCommand = "StartCaptureVideo";
+                    } else if (new String(C02247.this.val$payload).equals("StopCaptureVideo")) {
+                        CameraActivity.this.stopVideoReceivedFunction();
+                        CameraActivity.this.lastVieoCommand = "StopCaptureVideo";
+                    } else if (C02247.this.val$message.equals("/close_application")) {
+                        CameraActivity.this.closeDataConnection();
+                        CameraActivity.this.closeMessageConnection();
+                    }
+                }
+            }
+
+            C03871() {
+            }
+
+            public void onResult(GetConnectedNodesResult getConnectedNodesResult) {
+                for (Node node : getConnectedNodesResult.getNodes()) {
+                    Wearable.MessageApi.sendMessage(CameraActivity.this.messageClient, node.getId(), C02247.this.val$message, C02247.this.val$payload).setResultCallback(new C03861());
+                }
+            }
+        }
+
+        C02247(String str, byte[] bArr) {
+            this.val$message = str;
+            this.val$payload = bArr;
+        }
+
+        public void run() {
+            if (CameraActivity.this.messageClient == null || !CameraActivity.this.messageClient.isConnected()) {
+                CameraActivity.this.createMessageConnection();
+            }
+            Wearable.NodeApi.getConnectedNodes(CameraActivity.this.messageClient).setResultCallback(new C03871());
+        }
+    }
+
+    /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.1 */
+    class OnLayoutInflatedListener implements WatchViewStub.OnLayoutInflatedListener {
+
+        /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.1.1 */
+        class C02141 implements OnClickListener {
+            C02141() {
+            }
+
+            public void onClick(View v) {
+                CameraActivity.this.sendMessage("/cameraview", "SwitchCamera".getBytes());
+            }
+        }
+
+        /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.1.2 */
+        class C02162 implements OnClickListener {
+
+            /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.1.2.1 */
+            class C02151 extends Thread {
+                C02151() {
+                }
+
+                public void run() {
+                    try {
+                        if (CameraActivity.this.lastVieoCommand == null || CameraActivity.this.lastVieoCommand.equals("StopCaptureVideo")) {
+
+                            if (CameraActivity.this.isTakingVIdeo) {
+                                CameraActivity.this.sendMessage("/cameraview", "StopCaptureVideo".getBytes());
+                                lastVieoCommand="StopCaptureVideo";
+                            } else {
+                                CameraActivity.this.sendMessage("/cameraview", "StartCaptureVideo".getBytes());
+                                lastVieoCommand="StartCaptureVideo";
+                            }
+                        }
+//                        if (CameraActivity.this.lastVieoCommand.equals("StartCaptureVideo")) {
+//                            CameraActivity.this.isTakingVIdeo = false;
+//                        }
+                        if (CameraActivity.this.isTakingVIdeo) {
+                            CameraActivity.this.sendMessage("/cameraview", "StopCaptureVideo".getBytes());
+                        } else {
+                            CameraActivity.this.sendMessage("/cameraview", "StartCaptureVideo".getBytes());
+                        }
+                        CameraActivity.this.isTakingVIdeo =     !CameraActivity.this.isTakingVIdeo ;;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+//                        CameraActivity.this.isTakingVIdeo = false;
+                    }
+                }
+            }
+
+            C02162() {
+            }
+
+            public void onClick(View v) {
+                CameraActivity.this.runOnUiThread(new C02151());
+            }
+        }
+
+        /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.1.3 */
+        class C02173 implements OnClickListener {
+            C02173() {
+            }
+
+            public void onClick(View v) {
+                CameraActivity.this.sendMessage("/cameraview", "Capture".getBytes());
+            }
+        }
+
+        /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.1.4 */
+        class C02194 implements OnClickListener {
+
+            /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.1.4.1 */
+            class C02181 extends Thread {
+                C02181() {
+                }
+
+                public void run() {
+                    if (CameraActivity.this.isFlashUsed) {
+                        CameraActivity.this.flash.setBackground(CameraActivity.this.getResources().getDrawable(R.drawable.flash_yes_blue_));
+                    } else {
+                        CameraActivity.this.flash.setBackground(CameraActivity.this.getResources().getDrawable(R.drawable.flash_no_blue2));
+                    }
+                }
+            }
+
+            C02194() {
+            }
+
+            public void onClick(View v) {
+                CameraActivity.this.sendMessage("/cameraview", "SwitchFlash".getBytes());
+                CameraActivity.this.isFlashUsed = !CameraActivity.this.isFlashUsed;
+                CameraActivity.this.runOnUiThread(new C02181());
+            }
+        }
+
+        /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.1.5 */
+        class C02205 implements OnTouchListener {
+            C02205() {
+            }
+
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == 2) {
+                    if (CameraActivity.this.previousZoomPoint == null) {
+                        CameraActivity.this.previousZoomPoint = new PointF(event.getX(), event.getY());
+                    } else {
+                        CameraActivity cameraActivity;
+                        float different = CameraActivity.this.previousZoomPoint.y - event.getY();
+                        boolean haveZoom = false;
+                        if (different > 0.0f && CameraActivity.this.zoom < 100) {
+                            cameraActivity = CameraActivity.this;
+                            cameraActivity.zoom++;
+                            haveZoom = true;
+                        }
+                        if (different < 0.0f && CameraActivity.this.zoom > 0) {
+                            cameraActivity = CameraActivity.this;
+                            cameraActivity.zoom--;
+                            haveZoom = true;
+                        }
+                        if (haveZoom) {
+                            CameraActivity.this.sendMessage("/zoom", Integer.toString(CameraActivity.this.zoom).getBytes());
+                        }
+                        CameraActivity.this.previousZoomPoint = null;
+                    }
+                }
+                return true;
+            }
+        }
+
+        OnLayoutInflatedListener() {
+        }
+
+
+@Override
+        public void onLayoutInflated(WatchViewStub stub) {
+            CameraActivity.cameraActivity = CameraActivity.this;
+            CameraActivity.this.defaultTheme = CameraActivity.this.getTheme();
+            CameraActivity.cameraView = (RelativeLayout) stub.findViewById(R.id.cameraView);
+            CameraActivity.this.switchCamera = (Button) CameraActivity.this.findViewById(R.id.switchCamera);
+            CameraActivity.this.video = (Button) CameraActivity.this.findViewById(R.id.video);
+            CameraActivity.this.flash = (Button) CameraActivity.this.findViewById(R.id.flash);
+            CameraActivity.this.capture = (Button) CameraActivity.this.findViewById(R.id.capture);
+            CameraActivity.this.switchCamera.setOnClickListener(new C02141());
+            CameraActivity.this.video.setOnClickListener(new C02162());
+            CameraActivity.this.capture.setOnClickListener(new C02173());
+            CameraActivity.this.flash.setOnClickListener(new C02194());
+            CameraActivity.createDataConnection();
+            CameraActivity.cameraView.requestFocus();
+            CameraActivity.cameraView.setOnTouchListener(new C02205());
+        }
+    }
+
+    /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.4 */
+    static class C03844 implements OnConnectionFailedListener {
+        C03844() {
+        }
+
+        public void onConnectionFailed(ConnectionResult result) {
+//            CameraActivity.this.toast("Connection Faild");
+        }
+    }
+
+    /* renamed from: camera.nikos.tsoglani.camera.CameraActivity.5 */
+    class C03855 implements OnConnectionFailedListener {
+        C03855() {
+        }
+
+        public void onConnectionFailed(ConnectionResult result) {
+            CameraActivity.this.toast("Connection Faild");
+        }
+    }
+
+    public CameraActivity() {
+        this.isFlashUsed = false;
+        this.zoom = 0;
+    }
+
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera);
-        final WatchViewStub stub = (WatchViewStub) findViewById(R.id.watch_camera_view_stub);
-        stub.setOnLayoutInflatedListener(new WatchViewStub.OnLayoutInflatedListener() {
-            @Override
-            public void onLayoutInflated(WatchViewStub stub) {
-                cameraActivity = CameraActivity.this;
-                defaultTheme = getTheme();
-                cameraView = (RelativeLayout) stub.findViewById(R.id.cameraView);
-                switchCamera = (Button) findViewById(R.id.switchCamera);
-                video=(Button)findViewById(R.id.video);
-                flash = (Button) findViewById(R.id.flash);
-                capture = (Button) findViewById(R.id.capture);
-                switchCamera.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        sendMessage("/cameraview", "SwitchCamera".getBytes());
-
-
-                    }
-                });
-
-                video.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        isTakingVIdeo=!isTakingVIdeo;
-
-                        if(isTakingVIdeo){
-                            sendMessage("/cameraview","StartCaptureVideo".getBytes());
-                            video.setBackgroundResource(R.drawable.stop);
-                        }else{
-                            sendMessage("/cameraview","StopCaptureVideo".getBytes());
-                            video.setBackgroundResource(R.drawable.video);
-                        }
-                    }
-                });
-                capture.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        sendMessage("/cameraview", "Capture".getBytes());
-                    }
-                });
-                flash.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        sendMessage("/cameraview", "SwitchFlash".getBytes());
-                        isFlashUsed = !isFlashUsed;
-                        runOnUiThread(new Thread() {
-                            @Override
-                            public void run() {
-                                if (isFlashUsed) {
-                                    flash.setBackground(getResources().getDrawable(R.drawable.flash_yes_blue_));
-                                } else {
-                                    flash.setBackground(getResources().getDrawable(R.drawable.flash_no_blue2));
-
-                                }
-                            }
-                        });
-                    }
-                });
-                createDataConnection();
-                cameraView.setOnTouchListener(new View.OnTouchListener() {
-                    @Override
-                    public boolean onTouch(View v, MotionEvent event) {
-                        int action = event.getAction();
-
-                        Resources.Theme theme=getTheme();
-                        if (event.getPointerCount() == 2) {
-                            // handle multi-touch events
-                            if (action == MotionEvent.ACTION_POINTER_DOWN) {
-                                mDist = getFingerSpacing(event);
-                            } else if (action == MotionEvent.ACTION_MOVE) {
-                                handleZoom(event);
-                            }
-//                            getWindow().setType(android.R.attr.windowSwipeToDismiss);
-                            //windowSwipeToDismiss  getWindow().setType(android.R.attr.windowSwipeToDismiss);
-//                            setTheme(R.style.AppTheme);
-//                            setContentView(R.layout.activity_camera);
-
-                        } else {
-//                            setTheme(R.style.Theme_Wearable);
-//                            setContentView(R.layout.activity_camera);
-                            return false;
-                        }
-                        return true;
-
-                    }
-                });
-                new Thread() {
-                    @Override
-                    public void run() {
-                        try {
-                            Thread.sleep(1000);
-//                            sendMessage("/cameraActivity", "getCameraPicture".getBytes());
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }.start();
-
-            }
-        });
+        ((WatchViewStub) findViewById(R.id.watch_camera_view_stub)).setOnLayoutInflatedListener(new OnLayoutInflatedListener());
     }
 
+    public void stopVideoReceivedFunction() {
+        runOnUiThread(new stopCaptureVideoThread());
+    }
 
-    static GoogleApiClient channelClient;
+    public void startVideoReceivedFunction() {
+        runOnUiThread(new startCaptureVideoThread());
+    }
 
-    private GoogleApiClient messageClient;
-
-    public void createDataConnection() {
-        channelClient = new GoogleApiClient.Builder(this)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
-                    @Override
-                    public void onConnectionFailed(ConnectionResult result) {
-                        toast("Connection Faild");
-
-                    }
-                })
-                .addApi(Wearable.API)
-                .build();
-
+    public static void createDataConnection() {
+        channelClient = new Builder(cameraActivity).addConnectionCallbacks(cameraActivity).addOnConnectionFailedListener(new C03844()).addApi(Wearable.API).build();
         channelClient.connect();
-
     }
-
-
 
     public void createMessageConnection() {
-        messageClient = new GoogleApiClient.Builder(this)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(new GoogleApiClient.OnConnectionFailedListener() {
-                    @Override
-                    public void onConnectionFailed(ConnectionResult result) {
-                        toast("Connection Faild");
-
-                    }
-                })
-                .addApi(Wearable.API)
-                .build();
-
-        messageClient.connect();
-
+        this.messageClient = new Builder(this).addConnectionCallbacks(this).addOnConnectionFailedListener(new C03855()).addApi(Wearable.API).build();
+        this.messageClient.connect();
     }
 
-
-    private void toast(final String s) {
-        runOnUiThread(new Thread() {
-            @Override
-            public void run() {
-                Toast.makeText(CameraActivity.this, s, Toast.LENGTH_SHORT).show();
-            }
-        });
+    private void toast(String s) {
+        runOnUiThread(new C02236(s));
     }
-   static boolean willSendForClosing=true;
 
-    @Override
+    static {
+        willSendForClosing = true;
+    }
+
     protected void onResume() {
         super.onResume();
-        willSendForClosing=true;
+        onReadyForContent();
+
+        cameraActivity = this;
+        willSendForClosing = true;
     }
 
-    private void sendMessage(final String message, final byte[] payload) {
-
-
-        if (messageClient == null || !messageClient.isConnected()) {
-            createMessageConnection();
-        }
-
-        Wearable.NodeApi.getConnectedNodes(messageClient).setResultCallback(new ResultCallback<NodeApi.GetConnectedNodesResult>() {
-            @Override
-            public void onResult(NodeApi.GetConnectedNodesResult getConnectedNodesResult) {
-                List<Node> nodes = getConnectedNodesResult.getNodes();
-                for (Node node : nodes) {
-                    Wearable.MessageApi.sendMessage(messageClient, node.getId(), message, payload).setResultCallback(new ResultCallback<MessageApi.SendMessageResult>() {
-                        @Override
-                        public void onResult(MessageApi.SendMessageResult sendMessageResult) {
-                            if (sendMessageResult.getStatus().isSuccess()) {
-                                if (new String(payload).equals("main")) {
-                                    closeDataConnection();
-                                    closeMessageConnection();
-                                }
-                            } else {
-
-                                toast("Not connected with phone device");
-                            }
-                        }
-                    });
-                }
-
-            }
-        });
+    private void sendMessage(String message, byte[] payload) {
+        new C02247(message, payload).start();
     }
 
-    @Override
-    public void onStop() {
-        super.onStop();
-        if(willSendForClosing)
-        sendMessage("/close_application", "main".getBytes());
-//        closeDataConnection();
 
-    }
 
     private void closeDataConnection() {
         if (channelClient != null) {
-//            Wearable.DataApi.removeListener(channelClient, this);
             channelClient.disconnect();
             channelClient = null;
         }
     }
 
     private void closeMessageConnection() {
-        if (messageClient != null) {
-            messageClient.disconnect();
-            messageClient = null;
+        if (this.messageClient != null) {
+            this.messageClient.disconnect();
+            this.messageClient = null;
         }
     }
 
-    @Override
     public void onConnected(Bundle connectionHint) {
+        if(client==null){
+            onReadyForContent();
+        }
+        Wearable.MessageApi.addListener(client, this);
+
         if (channelClient == null || !channelClient.isConnected()) {
             channelClient = null;
-
         }
-//        if (channelClient != null)
-//            Wearable.DataApi.addListener(channelClient, this);
 
     }
 
-
-    @Override
     public void onConnectionSuspended(int i) {
-
-    }
-
-//    @Override
-//    public boolean onTouchEvent(MotionEvent event) {
-//        // Get the pointer ID
-//        int action = event.getAction();
-//
-//
-//        if (event.getPointerCount() > 1) {
-//            // handle multi-touch events
-//            if (action == MotionEvent.ACTION_POINTER_DOWN) {
-//                mDist = getFingerSpacing(event);
-//            } else if (action == MotionEvent.ACTION_MOVE) {
-//                handleZoom(event);
-//            }
-//
-//        }
-//        return true;
-//    }
-
-    float mDist;
-    int zoom = 0;
-
-    private void handleZoom(MotionEvent event) {
-        float newDist = getFingerSpacing(event);
-        if (newDist > mDist) {
-            //zoom in
-            if (zoom < 100)
-                zoom++;
-        } else if (newDist < mDist) {
-            //zoom out
-            if (zoom > 0)
-                zoom--;
-        }
-        mDist = newDist;
-        sendMessage("/zoom", Integer.toString(zoom).getBytes());
     }
 
     private float getFingerSpacing(MotionEvent event) {
         float x = event.getX(0) - event.getX(1);
         float y = event.getY(0) - event.getY(1);
-
-
-        return (float) Math.sqrt(x * x + y * y);
+        return (float) Math.sqrt((double) ((x * x) + (y * y)));
     }
 
-//    AsyncTask<Void, Void, Void> async;
-//
-//    @Override
-//    public void onDataChanged(DataEventBuffer dataEventBuffer) {
-//
-//        for (final DataEvent event : dataEventBuffer) {
-//            Toast.makeText(CameraActivity.this, event.getDataItem().getUri().getPath(), Toast.LENGTH_SHORT).show();
-//
-//            if (event.getType() == DataEvent.TYPE_CHANGED &&
-//                    event.getDataItem().getUri().getPath().equals("/image") || event.getDataItem().getUri().getPath().equals("/cameraImage")) {
-//                if(async!=null){
-//                    continue;
-//                }
-//                DataMapItem dataMapItem = DataMapItem.fromDataItem(event.getDataItem());
-//                final Asset profileAsset = dataMapItem.getDataMap().getAsset("profileImage");
-//
-//                async = new AsyncTask<Void, Void, Void>() {
-//                    Bitmap bitmap;
-//                    BitmapDrawable ob;
-//
-//                    @Override
-//                    protected Void doInBackground(Void... params) {
-//                        bitmap = loadBitmapFromAsset(profileAsset);
-//                        ob = new BitmapDrawable(getResources(), bitmap);
-//
-////                        Wearable.DataApi.deleteDataItems(channelClient, getUriForDataItem());
-////                        channelClient.disconnect();
-//
-//                        return null;
-//                    }
-//
-//                    @Override
-//                    protected void onPostExecute(Void aVoid) {
-//                        super.onPostExecute(aVoid);
-//                        if (ob != null) {
-//                            cameraView.setBackground(ob);
-//                        }
-////                        ob = null;
-////                        sendMessage("/cameraActivity","getCameraPicture".getBytes());
-//                        async=null;
-//System.gc();
-//                    }
-//                };
-//                async.execute();
-////                Bitmap bitmap = loadBitmapFromAsset(profileAsset);
-//
-//
-//                // Do something with the bitmap
-//            } else if (event.getType() == DataEvent.TYPE_CHANGED &&
-//                    event.getDataItem().getUri().getPath().equals("/close")) {
-//                Intent intent = new Intent(this, MainActivity.class);
-//                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-//                startActivity(intent);
-//            }
-//
-//
-//        }
-//        dataEventBuffer.release();
-//        System.gc();
-//    }
-
-
-//    private int TIMEOUT_MS = 1000;
-//
-//    public Bitmap loadBitmapFromAsset(Asset asset) {
-//
-//        if (asset == null) {
-//            throw new IllegalArgumentException("Asset must be non-null");
-//        }
-//        if (channelClient == null) {
-//            return null;
-//        }
-//        ConnectionResult result = channelClient.blockingConnect(TIMEOUT_MS, TimeUnit.MILLISECONDS);
-//        if (!result.isSuccess()) {
-//            return null;
-//        }
-//        // convert asset into a file descriptor and block until it's ready
-//        InputStream assetInputStream = Wearable.DataApi.getFdForAsset(
-//                channelClient, asset).await().getInputStream();
-////        channelClient.disconnect();
-//
-//        if (assetInputStream == null) {
-//            Log.w("request uknown", "Requested an unknown Asset.");
-//            return null;
-//        }
-//        // decode the stream into a bitmap
-//        return BitmapFactory.decodeStream(assetInputStream);
-//    }
-
     @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {
-        Toast.makeText(CameraActivity.this, "onConnectionFailed", Toast.LENGTH_SHORT).show();
+    protected void onStop() {
+        super.onStop();
+        if (client != null) {
+            Wearable.MessageApi.removeListener(client, this);
+            client.disconnect();
+            client = null;
+        }
+        cameraActivity = null;
+        if (willSendForClosing) {
+            sendMessage("/close_application", "main".getBytes());
+        }
     }
 }

@@ -1,5 +1,6 @@
 package camera.nikos.tsoglani.camera;
 
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -205,6 +206,7 @@ public class CameraPreview extends SurfaceView implements
             if (mCamera != null) {
                 if (!CameraActivity.cameraActivity.isVideoMode) {
                     mCamera.setPreviewDisplay(surfaceHolder);
+
                 } else {
 
                     if (initRecorder(surfaceHolder.getSurface()))
@@ -426,86 +428,86 @@ public class CameraPreview extends SurfaceView implements
 //                if(dataClient==null){
 //                    return;
 //                }
+                try {
 
+                    if (threads[0] != null) {// && threads[1] != null && threads[2] != null ) {
+                        return;
+                    }
 
-                if (threads[0] != null) {// && threads[1] != null && threads[2] != null ) {
-                    return;
-                }
+                    CameraActivity ca = (CameraActivity) getContext();
+                    if (ca.rotationMode == ca.LANDSHAPE) {
+                        rotation = 0;
+                    }
+                    if (ca.rotationMode == ca.LANDSHAPE_REVERSE) {
+                        rotation = (-180);
+                    } else if (ca.rotationMode == ca.POIRTRAIT) {
+                        if (CameraActivity.BACK_CAMERA == CameraActivity.cameraActivity.curentCameraMode) {
+                            rotation = (90);
+                        } else
+                            rotation = (-90);
 
-                CameraActivity ca = (CameraActivity) getContext();
-                if (ca.rotationMode == ca.LANDSHAPE) {
-                    rotation = 0;
-                }
-                if (ca.rotationMode == ca.LANDSHAPE_REVERSE) {
-                    rotation = (-180);
-                } else if (ca.rotationMode == ca.POIRTRAIT) {
-                    if (CameraActivity.BACK_CAMERA == CameraActivity.cameraActivity.curentCameraMode) {
-                        rotation = (90);
-                    } else
-                        rotation = (-90);
+                    }
 
-                }
+                    if (threads[0] == null) {
+                        threads[0] = new Thread() {
+                            @Override
+                            public void run() {
 
-                if (threads[0] == null) {
-                    threads[0] = new Thread() {
-                        @Override
-                        public void run() {
+                                try {
+                                    if (dataClient == null || !dataClient.isConnected()) {
+                                        createDataGoogleApiConnection();
 
-                            try {
-                                if (dataClient == null || !dataClient.isConnected()) {
-                                    createDataGoogleApiConnection();
-
-                                }
-
-
-                                if (dataClient != null && dataClient.isConnected()) {
-                                    try {
-                                        Camera.Parameters parameters = camera.getParameters();
-                                        int w = parameters.getPreviewSize().width;
-                                        int h = parameters.getPreviewSize().height;
-                                        int format = parameters.getPreviewFormat();
-                                        YuvImage image = new YuvImage(data, format, w, h, null);
-
-                                        ByteArrayOutputStream out = new ByteArrayOutputStream();
-                                        Rect area = new Rect(0, 0, w, h);
-                                        image.compressToJpeg(area, 50, out);
-
-                                        Bitmap bm = BitmapFactory.decodeByteArray(out.toByteArray(), 0, out.size());
-                                        Matrix matrix = new Matrix();
-
-
-                                        matrix.postRotate(rotation);
-
-                                        Bitmap rotatedBitmap = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), matrix, true);
-                                        int sizeW = 400, sizeH = 400;
-                                        Bitmap sendedBitmap = getResizedBitmap(rotatedBitmap, sizeW, sizeH);
-                                        ByteArrayOutputStream stream = new ByteArrayOutputStream();
-                                        sendedBitmap.compress(Bitmap.CompressFormat.JPEG, 30, stream);
-                                        byte[] byteArray = stream.toByteArray();
-                                        sendImage("/image w=" + sizeW + ",h=" + sizeH, byteArray);
-                                        try {
-                                            camera.addCallbackBuffer(data);
-                                        } catch (Exception e) {
-                                            Log.e("CameraTest", "addCallbackBuffer error");
-
-                                        }
-
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
                                     }
+
+
+                                    if (dataClient != null && dataClient.isConnected()) {
+                                        try {
+                                            Camera.Parameters parameters = camera.getParameters();
+                                            int w = parameters.getPreviewSize().width;
+                                            int h = parameters.getPreviewSize().height;
+                                            int format = parameters.getPreviewFormat();
+                                            YuvImage image = new YuvImage(data, format, w, h, null);
+
+                                            ByteArrayOutputStream out = new ByteArrayOutputStream();
+                                            Rect area = new Rect(0, 0, w, h);
+                                            image.compressToJpeg(area, 50, out);
+
+                                            Bitmap bm = BitmapFactory.decodeByteArray(out.toByteArray(), 0, out.size());
+                                            Matrix matrix = new Matrix();
+
+
+                                            matrix.postRotate(rotation);
+
+                                            Bitmap rotatedBitmap = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), matrix, true);
+                                            int sizeW = 400, sizeH = 400;
+                                            Bitmap sendedBitmap = getResizedBitmap(rotatedBitmap, sizeW, sizeH);
+                                            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                                            sendedBitmap.compress(Bitmap.CompressFormat.JPEG, 30, stream);
+                                            byte[] byteArray = stream.toByteArray();
+                                            sendImage("/image w=" + sizeW + ",h=" + sizeH, byteArray);
+                                            try {
+                                                camera.addCallbackBuffer(data);
+                                            } catch (Exception e) {
+                                                Log.e("CameraTest", "addCallbackBuffer error");
+
+                                            }
+
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
+                                    }
+
+
+                                } catch (OutOfMemoryError e) {
+                                    e.printStackTrace();
+                                    System.gc();
+
                                 }
-
-
-                            } catch (OutOfMemoryError e) {
-                                e.printStackTrace();
-                                System.gc();
-
+                                threads[0] = null;
                             }
-                            threads[0] = null;
-                        }
-                    };
-                    threads[0].start();
-                }
+                        };
+                        threads[0].start();
+                    }
 //                else if (threads[1] == null) {
 //                    threads[1] = new Thread() {
 //                        @Override
@@ -618,8 +620,10 @@ public class CameraPreview extends SurfaceView implements
 //                    };
 //                    threads[2].start();
 //                }
-                System.gc();
-            }
+                    System.gc();
+                }catch (Exception e){
+                    e.printStackTrace();
+                }}
 
         });
 
@@ -629,17 +633,17 @@ public class CameraPreview extends SurfaceView implements
         return Bitmap.createScaledBitmap(image, bitmapWidth, bitmapHeight, true);
     }
     void stopVideo(){
-if(mMediaRecorder!=null) {
-    mMediaRecorder.reset();
-    mMediaRecorder.release();
+        if(mMediaRecorder!=null) {
+            mMediaRecorder.reset();
+            mMediaRecorder.release();
 
-    // once the objects have been released they can't be reused
-    mMediaRecorder = null;
+            // once the objects have been released they can't be reused
+            mMediaRecorder = null;
 //    mCamera = null;
-    refreshCamera(mCamera);
+            refreshCamera(mCamera);
 
 
-}
+        }
     }
     void stopCamera() {
         if (null == mCamera)
@@ -691,6 +695,7 @@ if(mMediaRecorder!=null) {
                         dataClient = null;
                     }
                 })
+
                 .addApi(Wearable.API)
                 .build();
 
@@ -726,7 +731,7 @@ if(mMediaRecorder!=null) {
     private void sendImage(final String path, final byte[] data) {
         if (dataClient == null) {
             createDataGoogleApiConnection();
-            ;
+
         }
 
         Wearable.NodeApi.getConnectedNodes(dataClient).setResultCallback(new ResultCallback<NodeApi.GetConnectedNodesResult>() {
@@ -737,15 +742,28 @@ if(mMediaRecorder!=null) {
                     new Thread() {
                         @Override
                         public void run() {
+if(dataClient==null||!dataClient.isConnected()){
+    if(dataClient!=null){
+        dataClient.disconnect();
+    }
 
+    dataClient=null;
+    return;
+}
+
+                            try {
                             //toast(node.getId());
                             ChannelApi.OpenChannelResult result = Wearable.ChannelApi.openChannel(dataClient, node.getId(), path).await();
                             Channel channel = result.getChannel();
 
 //sending file
-                            try {
+
                                 channel.getOutputStream(dataClient).await().getOutputStream().write(data, 0, data.length);
-                            } catch (Exception e) {
+                            } catch (NullPointerException e) {
+                                e.printStackTrace();
+//                                if(dataClient!=null)
+//                                dataClient.reconnect();
+                            }catch (Exception e) {
                                 e.printStackTrace();
                             }
                         }
@@ -766,5 +784,3 @@ if(mMediaRecorder!=null) {
     }
 
 }
-
-

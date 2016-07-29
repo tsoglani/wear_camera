@@ -4,10 +4,15 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
+import android.util.Log;
+
 import com.google.android.gms.wearable.Channel;
 import com.google.android.gms.wearable.WearableListenerService;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 /**
  * Created by tsoglani on 25/2/2016.
@@ -18,14 +23,24 @@ public class WearService extends WearableListenerService {
     @Override
     public void onChannelOpened(Channel channel) {
 String path =channel.getPath();
+        Log.e("path =",path);
         if (path.startsWith("/image")) {
-            if (CameraActivity.channelClient == null || CameraActivity.cameraView == null) {
-                return;
+            if (CameraActivity.channelClient == null){
+
+                CameraActivity.createDataConnection();
             }
+//            if (CameraActivity.channelClient == null || CameraActivity.cameraView == null) {
+//                return;
+//            }
+
            String dimansions =path.substring("/image ".length(),path.length());
-         String dimansionsArray[]=   dimansions.split(",");
+            Log.e("dimansions",dimansions);
+
+            String dimansionsArray[]=   dimansions.split(",");
             String w=dimansionsArray[0].substring("w=".length(), dimansionsArray[0].length());
-            String h=dimansionsArray[0].substring("w=".length(),dimansionsArray[0].length());
+            String h=dimansionsArray[1].substring("h=".length(),dimansionsArray[1].length());
+//            String os=dimansionsArray[2];
+//            String cs=dimansionsArray[3];
 //            File file = new File("/sdcard/file.png");
 //            if (!file.exists())
 //                try {
@@ -37,16 +52,35 @@ String path =channel.getPath();
             int imageWidth,imageHeight;
             imageWidth=Integer.parseInt(w);
             imageHeight=Integer.parseInt(h);
-            byte[] data = new byte[imageWidth * imageHeight];
+//            byte[] compressedData = new byte[Integer.parseInt(cs)];
+            byte[]   decompressedData= new byte[imageWidth*imageHeight];
 //            Toast.makeText(WearService.this, "imageWidth= "+imageWidth+ "  imageWidth= " +imageWidth, Toast.LENGTH_SHORT).show();
             try {
-                channel.getInputStream(CameraActivity.channelClient).await().getInputStream().read(data);
-               final  Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+
+                if(!CameraActivity.channelClient.isConnected()){/////////////////
+                    return;
+                }
+
+                Log.e("dimansions","is connected");
+
+                channel.getInputStream(CameraActivity.channelClient).await().getInputStream().read(decompressedData);
+//                byte[] decompressedData=compressedData;
+//                try {
+//                  decompressedData = decompress(compressedData,Integer.parseInt(os));
+//                } catch (DataFormatException e) {
+//                    e.printStackTrace();
+//                }
+
+                final  Bitmap bitmap = BitmapFactory.decodeByteArray(decompressedData, 0, decompressedData.length);
+
                 CameraActivity.cameraActivity.runOnUiThread(new Thread() {
                     @Override
                     public void run() {
-                        CameraActivity.cameraView.setBackground(new BitmapDrawable(bitmap));
-                    }
+//                        if( CameraActivity.cameraView!=null){
+                            Log.e("dimansions","cameraView is not null ");
+
+                            CameraActivity.cameraView.setBackground(new BitmapDrawable(bitmap));}
+//                    }
                 });
             } catch (IOException e) {
                 e.printStackTrace();
@@ -59,6 +93,20 @@ String path =channel.getPath();
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
         }
+    }
+
+    public static byte[] decompress(byte[] data, int length) throws IOException, DataFormatException {
+        Inflater inflater = new Inflater();
+        inflater.setInput(data);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(data.length);
+        byte[] buffer = new byte[length];
+        while (!inflater.finished()) {
+            outputStream.write(buffer, 0, inflater.inflate(buffer));
+        }
+        inflater.end();
+        outputStream.close();
+        byte[] output = outputStream.toByteArray();
+        return output;
     }
 
     //when file is ready
