@@ -7,6 +7,6 @@
     android:layout_height="match_parent"
     app:rectLayout="@layout/rect_activity_camera"
     app:roundLayout="@layout/round_activity_camera"
-    tools:context="camera.nikos.tsoglani.camera.CameraActivity"
+    tools:context="wear.nikos.tsoglanakos.camera.CameraActivity"
     android:keepScreenOn="true"
     tools:deviceIds="wear"></android.support.wearable.view.WatchViewStub>

@@ -1,7 +1,5 @@
-package camera.nikos.tsoglani.camera;
+package wear.nikos.tsoglanakos.camera;
 
-import android.*;
-import android.Manifest;
 import android.annotation.TargetApi;
 import android.content.ContentValues;
 import android.content.Context;

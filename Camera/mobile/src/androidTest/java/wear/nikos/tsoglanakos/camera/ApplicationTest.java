@@ -1,4 +1,4 @@
-package camera.nikos.tsoglani.camera;
+package wear.nikos.tsoglanakos.camera;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;

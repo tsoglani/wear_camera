@@ -12,7 +12,7 @@
     android:paddingTop="@dimen/activity_vertical_margin"
 
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    tools:context="camera.nikos.tsoglani.camera.MainActivity"
+    tools:context="wear.nikos.tsoglanakos.camera.MainActivity"
     tools:showIn="@layout/activity_main">
 
     <RelativeLayout

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="camera.nikos.tsoglani.camera">
+    package="wear.nikos.tsoglanakos.camera">
 
     <uses-feature android:name="android.hardware.type.watch" />
 
@@ -12,7 +12,7 @@
         android:name="android.support.multidex.MultiDexApplication"
         android:theme="@android:style/Theme.DeviceDefault">
         <activity
-            android:name=".MainActivity"
+            android:name="wear.nikos.tsoglanakos.camera.MainActivity"
             android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -21,7 +21,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".CameraActivity"
+            android:name="wear.nikos.tsoglanakos.camera.CameraActivity"
             android:noHistory="true"
             android:label="@string/title_activity_camera"></activity>
 
@@ -30,7 +30,7 @@
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
-        <service android:name=".WearService">
+        <service android:name="wear.nikos.tsoglanakos.camera.WearService">
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
                 <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />

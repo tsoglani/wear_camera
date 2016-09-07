@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/AliceBlue"
-    tools:context="camera.nikos.tsoglani.camera.MainActivity"
+    tools:context="wear.nikos.tsoglanakos.camera.MainActivity"
     tools:deviceIds="wear_square">
 
     <FrameLayout

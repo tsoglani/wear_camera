@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="camera.nikos.tsoglani.camera">
+    package="wear.nikos.tsoglanakos.camera">
 
     <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:required= "true"/>
@@ -19,7 +19,7 @@
     <uses-permission android:name="android.permission.RECORD_VIDEO" android:required= "true" />
 
     <uses-feature android:name="android.hardware.camera" />
-    <uses-feature android:name="android.hardware.camera.autofocus" />
+    <uses-feature android:name="android.hardware.wear.autofocus" />
 
     <application
         android:allowBackup="true"
@@ -32,7 +32,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".CameraActivity"
+            android:name="wear.nikos.tsoglanakos.camera.CameraActivity"
             android:label="@string/title_activity_camera"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
@@ -46,7 +46,7 @@
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
 
-        <service android:name=".MobileService">
+        <service android:name="wear.nikos.tsoglanakos.camera.MobileService">
             <intent-filter>
                 <!--<action android:name="com.google.android.gms.wearable.BIND_LISTENER" />-->
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
@@ -58,7 +58,7 @@
         </service>
 
         <activity
-            android:name=".MainActivity"
+            android:name="wear.nikos.tsoglanakos.camera.MainActivity"
             android:label="@string/title_activity_main"
             android:noHistory="true"
             android:theme="@style/AppTheme.NoActionBar"></activity>

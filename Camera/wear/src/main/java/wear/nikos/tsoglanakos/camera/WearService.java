@@ -1,4 +1,4 @@
-package camera.nikos.tsoglani.camera;
+package wear.nikos.tsoglanakos.camera;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
