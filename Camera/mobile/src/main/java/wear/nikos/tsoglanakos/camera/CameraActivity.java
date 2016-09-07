@@ -726,13 +726,13 @@ boolean isAllPermissionGranded=true;
 
 
                     try {
+if(mCamera!=null) {
+    Camera.Parameters p = mCamera.getParameters();
 
-                        Camera.Parameters p = mCamera.getParameters();
+    p.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
 
-                        p.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
-
-                        mCamera.setParameters(p);
-
+    mCamera.setParameters(p);
+}
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
