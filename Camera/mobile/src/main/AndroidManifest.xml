@@ -34,6 +34,8 @@
         <activity
             android:name="wear.nikos.tsoglanakos.camera.CameraActivity"
             android:label="@string/title_activity_camera"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|keyboardHidden"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -61,6 +63,8 @@
             android:name="wear.nikos.tsoglanakos.camera.MainActivity"
             android:label="@string/title_activity_main"
             android:noHistory="true"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|keyboardHidden"
             android:theme="@style/AppTheme.NoActionBar"></activity>
     </application>
 
